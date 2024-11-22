@@ -1,5 +1,5 @@
 {
-	"name": "local-save",
+	"name": "@febkosq8/local-save",
 	"type": "module",
 	"version": "1.0.0",
 	"main": "dist/index.cjs",
