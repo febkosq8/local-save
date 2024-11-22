@@ -1,6 +1,10 @@
 {
 	"name": "@febkosq8/local-save",
+	"private": false,
 	"type": "module",
+	"files": [
+		"dist"
+	],
 	"version": "0.0.1",
 	"main": "dist/index.cjs",
 	"types": "dist/index.d.ts",
