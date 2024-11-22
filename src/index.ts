@@ -10,6 +10,7 @@ class LocalSave {
 		this.dbName = config?.dbName ?? this.dbName;
 		this.encryptKey = config?.encryptKey;
 		this.categories = config?.categories ?? this.categories;
+		this.expiryThreshold = config?.expiryThreshold ?? this.expiryThreshold;
 		this.printDebug = config?.printDebug ?? this.printDebug;
 	}
 
