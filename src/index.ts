@@ -9,7 +9,7 @@ class LocalSave {
     expiryThreshold: number = 30;
     clearOnDecryptError: boolean = true;
     printLogs: boolean = false;
-    constructor(config: Config) {
+    constructor(config?: Config) {
         this.dbName = config?.dbName ?? this.dbName;
         this.encryptionKey = config?.encryptionKey;
         this.categories = config?.categories ?? this.categories;
@@ -17,7 +17,7 @@ class LocalSave {
         this.clearOnDecryptError = config?.clearOnDecryptError ?? this.clearOnDecryptError;
         this.printLogs = config?.printLogs ?? this.printLogs;
 
-        if (!!config.encryptionKey && !isValidEncryptionKey(config.encryptionKey)) {
+        if (!!config?.encryptionKey && !isValidEncryptionKey(config?.encryptionKey)) {
             Logger.warn(`Encryption key should be of length 16, 24, or 32 characters`, {
                 keyLength: config.encryptionKey.length,
             });
@@ -536,7 +536,7 @@ export interface Config {
      *
      * @default "LocalSave"
      */
-    dbName: DBName;
+    dbName?: DBName;
     /**
      * The key to use for encrypting and decrypting data
      * Not providing this will store data in plain text
@@ -552,26 +552,26 @@ export interface Config {
      *
      * @default ["userData"]
      */
-    categories: Category[];
+    categories?: Category[];
     /**
      * The number of days to use as the threshold for expiring data
      *
      * @default '30' days
      */
-    expiryThreshold: number;
+    expiryThreshold?: number;
     /**
      * Whether to clear all data for a category if an error occurs while decrypting data
      * Most likely reason of error is due to an incorrect encryption key
      *
      * @default true
      */
-    clearOnDecryptError: boolean;
+    clearOnDecryptError?: boolean;
     /**
      * Whether to print logs
      * Includes debug and errors logs
      *
      * @default false
      */
-    printLogs: boolean;
+    printLogs?: boolean;
 }
 export default LocalSave;
