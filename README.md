@@ -6,10 +6,12 @@
 
 ## Features
 
-- **Encryption Support :** Uses AES-GCM for secure data encryption.
+- **Lightweight & Widespread Support:** No external dependencies and works in all modern browsers.
+- **TypeScript Support :** Written in TypeScript with type definitions.
+- **Encryption Support :** Uses [SubtleCrypto](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto) for secure data encryption with [AES-GCM](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt#aes-gcm) algorithm.
 - **Category Management :** Organize data into predefined categories.
-- **Data Expiry :** Automatically clears data older than a specified number of days.
-- **IndexedDB Management :** Handles object store creation and database versioning automatically.
+- **Data Expiry :** Allows setting an expiration threshold for data and a method to clear expired data.
+- **IndexedDB Management :** Handles IndexedDB, object store creation and IndexedDB versioning management automatically.
 - **Logging :** Debug logs for detailed insights.
 
 ---
@@ -26,14 +28,14 @@ npm install @febkosq8/local-save
 
 ### Configuration Options
 
-| Option Key              | Type       | Default        | Description                                                                                                                                            |
-| ----------------------- | ---------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **dbName**              | `string`   | `"LocalSave"`  | Name of the IndexedDB database.                                                                                                                        |
-| **encryptKey**          | `string`   | `undefined`    | Encryption key that should be either [16, 24, or 32] characters to be used for AES-GCM encryption. If not provided, data will be stored in plain text. |
-| **categories**          | `string[]` | `["userData"]` | Array of categories (Object store names).                                                                                                              |
-| **expiryThreshold**     | `number`   | `30`           | Data expiration threshold in days.                                                                                                                     |
-| **clearOnDecryptError** | `boolean`  | `true`         | Whether to clear a category if decryption fails.                                                                                                       |
-| **printLogs**           | `boolean`  | `false`        | Whether to print logs (Debug and errors).                                                                                                              |
+| Option Key                | Type       | Default        | Description                                                                                                                                            |
+| ------------------------- | ---------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **_dbName_**              | `string`   | `"LocalSave"`  | Name of the IndexedDB database.                                                                                                                        |
+| **_encryptKey_**          | `string`   | `undefined`    | Encryption key that should be either [16, 24, or 32] characters to be used for AES-GCM encryption. If not provided, data will be stored in plain text. |
+| **_categories_**          | `string[]` | `["userData"]` | Array of categories (Object store names).                                                                                                              |
+| **_expiryThreshold_**     | `number`   | `30`           | Data expiration threshold in days.                                                                                                                     |
+| **_clearOnDecryptError_** | `boolean`  | `true`         | Whether to clear a category if decryption fails.                                                                                                       |
+| **_printLogs_**           | `boolean`  | `false`        | Whether to print logs (Debug and errors).                                                                                                              |
 
 ### Initialization
 
