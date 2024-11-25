@@ -11,7 +11,7 @@ import CryptoJS from "crypto-js";
  * @returns `true` if the key length is valid, otherwise `false`.
  */
 function validateEncryptKey(key: string) {
-	return key.length > 0 && [16, 24, 32].includes(key.length);
+	return (key.length > 0 && [16, 24, 32].includes(key.length)) as boolean;
 }
 
 /**
@@ -29,12 +29,6 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
 	const len = bytes.byteLength;
 	for (let i = 0; i < len; i++) {
 		binary += String.fromCharCode(bytes[i]);
-	}
-	if (this.printLogs) {
-		console.debug(`LocalSave | ArrayBuffer converted to Base64`, {
-			bufferLength: buffer.byteLength,
-			base64Length: binary.length,
-		});
 	}
 	return window.btoa(binary) as string;
 }
@@ -55,12 +49,6 @@ function base64ToArrayBuffer(base64: string) {
 	for (let i = 0; i < len; i++) {
 		bytes[i] = binary_string.charCodeAt(i);
 	}
-	if (this.printLogs) {
-		console.debug(`LocalSave | Base64 converted to ArrayBuffer`, {
-			base64Length: base64.length,
-			bytesLength: bytes.length,
-		});
-	}
 	return bytes.buffer as ArrayBuffer;
 }
 
@@ -79,8 +67,10 @@ class LocalSave {
 		this.clearOnDecryptError = config?.clearOnDecryptError ?? this.clearOnDecryptError;
 		this.printLogs = config?.printLogs ?? this.printLogs;
 
-		if (!!config.encryptKey && !!config?.clearOnDecryptError && !validateEncryptKey(config.encryptKey)) {
-			throw new Error("LocalSave | Encryption key should be of length 16, 24, or 32 characters");
+		if (!!config.encryptKey && !validateEncryptKey(config.encryptKey)) {
+			console.warn(`LocalSave | Encryption key should be of length 16, 24, or 32 characters`, {
+				keyLength: config.encryptKey.length,
+			});
 		}
 	}
 
@@ -195,7 +185,7 @@ class LocalSave {
 	private async getEncryptKey() {
 		if (!this.encryptKey) {
 			throw new Error(`LocalSave | Encryption key is not configured`);
-		} else if (![16, 24, 32].includes(this.encryptKey.length)) {
+		} else if (!validateEncryptKey(this.encryptKey)) {
 			throw new Error("LocalSave | Encryption key should be of length 16, 24, or 32 characters");
 		}
 		const encoder = new TextEncoder();
@@ -303,7 +293,7 @@ class LocalSave {
 			if (this.printLogs) {
 				console.error(`LocalSave | Data decryption failed`, error);
 			}
-			throw error;
+			throw new Error(`Data decryption failed`);
 		}
 	}
 
@@ -386,6 +376,7 @@ class LocalSave {
 				} else {
 					if (this.encryptKey) {
 						try {
+							console.debug(`LocalSave | Attempting to decrypt data`);
 							const decryptedData = await this.decryptData(result as DBItemEncryptedBase64);
 							if (this.printLogs) {
 								console.debug(`LocalSave | Data retrieved successfully`, {
@@ -396,13 +387,16 @@ class LocalSave {
 							}
 							return resolve(decryptedData);
 						} catch (error) {
+							if (this.printLogs) {
+								console.error(`LocalSave | Failed to get data`, error);
+							}
 							if (this.clearOnDecryptError) {
 								if (this.printLogs) {
-									console.error(`LocalSave | Failed to get data since decryption failed`, error);
+									console.error(`LocalSave | Triggering clear for all data for category since decryption failed`);
 								}
 								this.clear(category);
-								throw error;
 							}
+							return reject(error);
 						}
 					} else {
 						result = result as DBItem;
