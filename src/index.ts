@@ -68,6 +68,7 @@ class LocalSave {
 	 * @param category - The name of the object store to retrieve.
 	 * @param mode - The mode for the transaction (default is "readonly").
 	 * @returns {Promise<IDBObjectStore>} A promise that resolves to the requested object store.
+	 * @throws Will throw an error if the object store does not exist in the database and the category is invalid
 	 */
 	private async getStore(category: Category, mode: IDBTransactionMode = "readonly"): Promise<IDBObjectStore> {
 		let db = await this.openDB();
@@ -80,6 +81,10 @@ class LocalSave {
 			const currVersion = db.version;
 			db.close();
 			db = await this.openDB(currVersion + 1);
+		} else {
+			throw new Error(
+				`LocalSave | Requested object store not found in current database version [category:${category} / dbName:${this.dbName} / version:${db.version}].`
+			);
 		}
 		const transaction = db.transaction(category, mode);
 		const store = transaction.objectStore(category);
