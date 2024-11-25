@@ -1,5 +1,16 @@
 /**
  * Validates the encryption key.
+ * This function checks if the provided key is defined and has a length.
+ *
+ * @param key - The encryption key to validate.
+ * @returns `true` if the key is defined.
+ */
+export function isEncryptionKeyDefined(key: string | undefined | null) {
+    return !!key && key != '' && key.length > 0;
+}
+
+/**
+ * Validates the encryption key.
  *
  * This function checks if the provided key has a valid length.
  * The valid lengths for the encryption key are 16, 24, or 32 characters.
@@ -7,7 +18,6 @@
  * @param key - The encryption key to validate.
  * @returns `true` if the key length is valid, otherwise `false`.
  */
-
 export function isValidEncryptionKey(key: string) {
     return key.length > 0 && [16, 24, 32].includes(key.length);
 }

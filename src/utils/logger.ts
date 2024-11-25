@@ -3,18 +3,18 @@ export default class Logger {
         throw new Error('This class cannot be instantiated.');
     }
     static log(message: string, ...args: unknown[]) {
-        console.log(`[LocalSave | LOG] ${message}`, ...args);
+        console.log(`[LocalSave | LOG] ${message}\n`, ...args);
     }
     static warn(message: string, ...args: unknown[]) {
-        console.warn(`[LocalSave | WARN] ${message}`, ...args);
+        console.warn(`[LocalSave | WARN] ${message}\n`, ...args);
     }
     static error(message: string, ...args: unknown[]) {
-        console.error(`[LocalSave | ERROR] ${message}`, ...args);
+        console.error(`[LocalSave | ERROR] ${message}\n`, ...args);
     }
     static info(message: string, ...args: unknown[]) {
-        console.info(`[LocalSave | INFO] ${message}`, ...args);
+        console.info(`[LocalSave | INFO] ${message}\n`, ...args);
     }
     static debug(message: string, ...args: unknown[]) {
-        console.debug(`[LocalSave | DEBUG] ${message}`, ...args);
+        console.debug(`[LocalSave | DEBUG] ${message}\n`, ...args);
     }
 }

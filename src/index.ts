@@ -1,6 +1,12 @@
-import LocalSaveError from '@local-save/utils/LocalSaveError';
+import LocalSaveEncryptionKeyError from '@local-save/utils/errors/LocalSaveEncryptionKeyError';
+import LocalSaveError from '@local-save/utils/errors/LocalSaveError';
 import Logger from '@local-save/utils/logger';
-import { arrayBufferToBase64, base64ToArrayBuffer, isValidEncryptionKey } from '@local-save/utils/utils';
+import {
+    arrayBufferToBase64,
+    base64ToArrayBuffer,
+    isEncryptionKeyDefined,
+    isValidEncryptionKey,
+} from '@local-save/utils/utils';
 
 class LocalSave {
     dbName: DBName = 'LocalSave';
@@ -129,22 +135,22 @@ class LocalSave {
      * @internal
      * @returns A promise that resolves to a CryptoKey object.
      *
-     * @throws {LocalSaveError} If the encryption key is not configured.
-     * @throws {LocalSaveError} If the encryption key length is not 16, 24, or 32 characters.
+     * @throws {LocalSaveEncryptionKeyError} If the encryption key is not configured.
+     * @throws {LocalSaveEncryptionKeyError} If the encryption key length is not 16, 24, or 32 characters.
      */
     private async getEncryptKey() {
-        if (!this.encryptionKey) {
-            throw new LocalSaveError(`Encryption key is not configured`);
+        if (!isEncryptionKeyDefined(this.encryptionKey)) {
+            throw new LocalSaveEncryptionKeyError(`Encryption key is not configured`);
         }
-        if (!isValidEncryptionKey(this.encryptionKey)) {
-            throw new LocalSaveError('Encryption key should be of length 16, 24, or 32 characters');
+        if (!!this.encryptionKey && !isValidEncryptionKey(this.encryptionKey)) {
+            throw new LocalSaveEncryptionKeyError('Encryption key should be of length 16, 24, or 32 characters');
         }
         const encoder = new TextEncoder();
         const keyBytes = encoder.encode(this.encryptionKey);
         const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
         if (this.printLogs) {
             Logger.debug(`Encryption key retrieved successfully`, {
-                keyLength: this.encryptionKey.length,
+                keyLength: this.encryptionKey?.length,
                 keyBytesLength: keyBytes.length,
             });
         }
@@ -166,13 +172,13 @@ class LocalSave {
      *
      * @returns A promise that resolves to the encrypted data as a base64 encoded string.
      *
-     * @throws {LocalSaveError} If the encryption key is not configured.
+     * @throws {LocalSaveEncryptionKeyError} If the encryption key is not configured.
      * @throws {LocalSaveError} If the encryption process fails.
      */
     private async encryptData(data: DBItem) {
         try {
-            if (!this.encryptionKey) {
-                throw new LocalSaveError(`Encryption key is not configured`);
+            if (!isEncryptionKeyDefined(this.encryptionKey)) {
+                throw new LocalSaveEncryptionKeyError(`Encryption key is not configured`);
             }
             const iv = window.crypto.getRandomValues(new Uint8Array(12));
             const generatedKey = await this.getEncryptKey();
@@ -213,13 +219,13 @@ class LocalSave {
      *
      * @returns The decrypted data as an object.
      *
-     * @throws {LocalSaveError} If the encryption key is not configured.
+     * @throws {LocalSaveEncryptionKeyError} If the encryption key is not configured.
      * @throws {LocalSaveError} If the decryption process fails.
      */
     async decryptData(encryptedBase64Data: string) {
         try {
-            if (!this.encryptionKey) {
-                throw new LocalSaveError(`Encryption key is not configured`);
+            if (!isEncryptionKeyDefined(this.encryptionKey)) {
+                throw new LocalSaveEncryptionKeyError(`Encryption key is not configured`);
             }
             const arrayBuffer = base64ToArrayBuffer(encryptedBase64Data);
             const iv = new Uint8Array(arrayBuffer, 0, 12);
