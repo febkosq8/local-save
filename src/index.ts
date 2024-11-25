@@ -81,7 +81,7 @@ class LocalSave {
 			const currVersion = db.version;
 			db.close();
 			db = await this.openDB(currVersion + 1);
-		} else {
+		} else if (!db.objectStoreNames.contains(category)) {
 			throw new Error(
 				`LocalSave | Requested object store not found in current database version [category:${category} / dbName:${this.dbName} / version:${db.version}].`
 			);
