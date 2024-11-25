@@ -1,26 +1,26 @@
 {
-	"$schema": "https://json.schemastore.org/tsconfig",
-	"compilerOptions": {
-		"target": "ESNext",
-		"lib": ["ESNext", "DOM"],
-		"skipLibCheck": true,
-		"esModuleInterop": true,
-		"allowSyntheticDefaultImports": true,
-		"strict": true,
-		"forceConsistentCasingInFileNames": true,
-		"noFallthroughCasesInSwitch": true,
-		"module": "ESNext",
-		"moduleResolution": "Bundler",
-		"moduleDetection": "force",
-		"resolveJsonModule": true,
-		"isolatedModules": true,
-		"noEmit": true,
-		// "verbatimModuleSyntax": true,
-		"baseUrl": ".",
-		"paths": {
-			"@local-save/*": ["./src/*"]
-		}
-	},
-	"allowDefaultProject": true,
-	"exclude": ["node_modules", "dist"]
+    "$schema": "https://json.schemastore.org/tsconfig",
+    "compilerOptions": {
+        "target": "ESNext",
+        "lib": ["ESNext", "DOM"],
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
+        "noFallthroughCasesInSwitch": true,
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "moduleDetection": "force",
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        // "verbatimModuleSyntax": true,
+        "baseUrl": ".",
+        "paths": {
+            "@local-save/*": ["./src/*"]
+        }
+    },
+    "allowDefaultProject": true,
+    "exclude": ["node_modules", "dist"]
 }

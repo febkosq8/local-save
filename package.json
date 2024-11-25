@@ -1,50 +1,47 @@
 {
-	"name": "@febkosq8/local-save",
-	"private": false,
-	"type": "module",
-	"files": [
-		"dist"
-	],
-	"version": "0.1.0",
-	"main": "dist/index.cjs",
-	"types": "dist/index.d.ts",
-	"module": "dist/index.js",
-	"repository": "https://github.com/febkosq8/local-save",
-	"scripts": {
-		"build": "tsup",
-		"lint": "eslint .",
-		"lint-fix": "eslint . --fix",
-		"type-check": "tsc --noEmit",
-		"publish": "npm publish --access public"
-	},
-	"keywords": [
-		"IndexedDB",
-		"local-save",
-		"LocalSave",
-		"localStorage",
-		"secure",
-		"SubtleCrypto",
-		"AES-GCM"
-	],
-	"author": "Febkosq8",
-	"license": "ISC",
-	"description": "Utilize IndexedDB to store data locally and securely using AES-GCM encryption.",
-	"devDependencies": {
-		"@eslint/js": "^9.11.1",
-		"@swc/core": "^1.9.0",
-		"@swc/helpers": "^0.5.13",
-		"@types/crypto-js": "^4.2.2",
-		"@vitest/ui": "^2.1.5",
-		"esbuild": "^0.24.0",
-		"eslint": "^9.14.0",
-		"eslint-plugin-prettier": "^5.2.1",
-		"prettier": "3.3.3",
-		"prettier-plugin-eslint": "^1.0.2",
-		"prettier-plugin-organize-imports": "^4.1.0",
-		"tsup": "^8.3.5",
-		"tsx": "^4.19.2",
-		"typescript": "^5.6.3",
-		"typescript-eslint": "^8.13.0",
-		"vitest": "^2.1.5"
-	}
+    "name": "@febkosq8/local-save",
+    "private": false,
+    "type": "module",
+    "files": [
+        "dist"
+    ],
+    "version": "0.1.0",
+    "main": "dist/index.cjs",
+    "types": "dist/index.d.ts",
+    "module": "dist/index.js",
+    "repository": "https://github.com/febkosq8/local-save",
+    "scripts": {
+        "build": "tsup",
+        "lint": "eslint .",
+        "lint-fix": "eslint . --fix",
+        "type-check": "tsc --noEmit",
+        "publish": "npm publish --access public"
+    },
+    "keywords": [
+        "IndexedDB",
+        "local-save",
+        "LocalSave",
+        "localStorage",
+        "secure",
+        "SubtleCrypto",
+        "AES-GCM"
+    ],
+    "author": "Febkosq8",
+    "license": "ISC",
+    "description": "Utilize IndexedDB to store data locally and securely using AES-GCM encryption.",
+    "devDependencies": {
+        "@eslint/js": "^9.15.0",
+        "@types/crypto-js": "^4.2.2",
+        "@vitest/ui": "^2.1.5",
+        "esbuild": "^0.24.0",
+        "eslint": "^9.14.0",
+        "eslint-plugin-prettier": "^5.2.1",
+        "prettier": "^3.3.3",
+        "prettier-plugin-eslint": "^1.0.2",
+        "prettier-plugin-organize-imports": "^4.1.0",
+        "tsup": "^8.3.5",
+        "typescript": "^5.6.3",
+        "typescript-eslint": "^8.16.0",
+        "vitest": "^2.1.5"
+    }
 }

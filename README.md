@@ -6,13 +6,13 @@
 
 ## Features
 
-- **Lightweight & Widespread Support:** No external dependencies and works in all modern browsers.
-- **TypeScript Support :** Written in TypeScript with type definitions.
-- **Encryption Support :** Uses [SubtleCrypto](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto) for secure data encryption with [AES-GCM](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt#aes-gcm) algorithm.
-- **Category Management :** Organize data into predefined categories.
-- **Data Expiry :** Allows setting an expiration threshold for data and a method to clear expired data.
-- **IndexedDB Management :** Handles IndexedDB, object store creation and IndexedDB versioning management automatically.
-- **Logging :** Debug logs for detailed insights.
+-   **Lightweight & Widespread Support:** No external dependencies and works in all modern browsers.
+-   **TypeScript Support :** Written in TypeScript with type definitions.
+-   **Encryption Support :** Uses [SubtleCrypto](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto) for secure data encryption with [AES-GCM](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt#aes-gcm) algorithm.
+-   **Category Management :** Organize data into predefined categories.
+-   **Data Expiry :** Allows setting an expiration threshold for data and a method to clear expired data.
+-   **IndexedDB Management :** Handles IndexedDB, object store creation and IndexedDB versioning management automatically.
+-   **Logging :** Debug logs for detailed insights.
 
 ---
 
@@ -57,7 +57,7 @@ const localSave = new LocalSave(lsConfig);
 Set data in a category
 
 ```typescript
-await localSave.set("userData", "user001", { name: "John Doe", age: 30 });
+await localSave.set('userData', 'user001', { name: 'John Doe', age: 30 });
 ```
 
 ### Get Data
@@ -66,13 +66,13 @@ Get data from a category
 
 ```typescript
 try {
-	const localDataFetch = await localSave.get("userData", "user001");
-	const { timestamp, data } = localDataFetch;
-	console.log(data); // { name: "John Doe", age: 30 }
-	console.log(timestamp); // UNIX timestamp of calling `set` method
-	//handle data here
+    const localDataFetch = await localSave.get('userData', 'user001');
+    const { timestamp, data } = localDataFetch;
+    console.log(data); // { name: "John Doe", age: 30 }
+    console.log(timestamp); // UNIX timestamp of calling `set` method
+    //handle data here
 } catch (error) {
-	//handle error here
+    //handle error here
 }
 ```
 
@@ -81,7 +81,7 @@ try {
 Remove data from a category
 
 ```typescript
-await localSave.remove("userData", "user001");
+await localSave.remove('userData', 'user001');
 ```
 
 ### Clear Category
@@ -89,7 +89,7 @@ await localSave.remove("userData", "user001");
 Clear all data from a category
 
 ```typescript
-await localSave.clear("userData");
+await localSave.clear('userData');
 ```
 
 ### Clear Expired Data
