@@ -1,5 +1,3 @@
-import CryptoJS from "crypto-js";
-
 /**
  * Validates the encryption key.
  *
@@ -258,7 +256,7 @@ class LocalSave {
 	 * Decrypts the provided data using the configured encryption key.
 	 * If no encryption key is configured, it returns the data as is.
 	 *
-	 * @param encryptedBase64Data The data to decrypt, as a string or CryptoJS.lib.CipherParams.
+	 * @param encryptedBase64Data The data to decrypt, as a string.
 	 *
 	 * @returns The decrypted data as an object.
 	 *
@@ -631,7 +629,7 @@ export interface Config {
 	/**
 	 * The number of days to use as the threshold for expiring data
 	 *
-	 * @default 30
+	 * @default '30' days
 	 */
 	expiryThreshold: number;
 	/**
