@@ -14,6 +14,56 @@ function validateEncryptKey(key: string) {
 	return key.length > 0 && [16, 24, 32].includes(key.length);
 }
 
+/**
+ * Converts an ArrayBuffer to a Base64 encoded string.
+ *
+ * @internal
+ *
+ * @param ArrayBuffer - The ArrayBuffer to convert.
+ *
+ * @returns The Base64 encoded string representation of the ArrayBuffer.
+ */
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+	let binary = "";
+	const bytes = new Uint8Array(buffer);
+	const len = bytes.byteLength;
+	for (let i = 0; i < len; i++) {
+		binary += String.fromCharCode(bytes[i]);
+	}
+	if (this.printLogs) {
+		console.debug(`LocalSave | ArrayBuffer converted to Base64`, {
+			bufferLength: buffer.byteLength,
+			base64Length: binary.length,
+		});
+	}
+	return window.btoa(binary) as string;
+}
+
+/**
+ * Converts a base64 encoded string to an ArrayBuffer.
+ *
+ * @internal
+ *
+ * @param base64 - The base64 encoded string to convert.
+ *
+ * @returns The resulting ArrayBuffer.
+ */
+function base64ToArrayBuffer(base64: string) {
+	const binary_string = window.atob(base64);
+	const len = binary_string.length;
+	const bytes = new Uint8Array(len);
+	for (let i = 0; i < len; i++) {
+		bytes[i] = binary_string.charCodeAt(i);
+	}
+	if (this.printLogs) {
+		console.debug(`LocalSave | Base64 converted to ArrayBuffer`, {
+			base64Length: base64.length,
+			bytesLength: bytes.length,
+		});
+	}
+	return bytes.buffer as ArrayBuffer;
+}
+
 class LocalSave {
 	dbName: DBName = "LocalSave";
 	encryptKey?: EncryptKey;
@@ -29,7 +79,7 @@ class LocalSave {
 		this.clearOnDecryptError = config?.clearOnDecryptError ?? this.clearOnDecryptError;
 		this.printLogs = config?.printLogs ?? this.printLogs;
 
-		if (!!config.encryptKey && !validateEncryptKey(config.encryptKey)) {
+		if (!!config.encryptKey && !!config?.clearOnDecryptError && !validateEncryptKey(config.encryptKey)) {
 			throw new Error("LocalSave | Encryption key should be of length 16, 24, or 32 characters");
 		}
 	}
@@ -134,56 +184,6 @@ class LocalSave {
 	}
 
 	/**
-	 * Converts an ArrayBuffer to a Base64 encoded string.
-	 *
-	 * @internal
-	 *
-	 * @param ArrayBuffer - The ArrayBuffer to convert.
-	 *
-	 * @returns The Base64 encoded string representation of the ArrayBuffer.
-	 */
-	private arrayBufferToBase64(buffer: ArrayBuffer) {
-		let binary = "";
-		const bytes = new Uint8Array(buffer);
-		const len = bytes.byteLength;
-		for (let i = 0; i < len; i++) {
-			binary += String.fromCharCode(bytes[i]);
-		}
-		if (this.printLogs) {
-			console.debug(`LocalSave | ArrayBuffer converted to Base64`, {
-				bufferLength: buffer.byteLength,
-				base64Length: binary.length,
-			});
-		}
-		return window.btoa(binary) as string;
-	}
-
-	/**
-	 * Converts a base64 encoded string to an ArrayBuffer.
-	 *
-	 * @internal
-	 *
-	 * @param base64 - The base64 encoded string to convert.
-	 *
-	 * @returns The resulting ArrayBuffer.
-	 */
-	private base64ToArrayBuffer(base64: string) {
-		const binary_string = window.atob(base64);
-		const len = binary_string.length;
-		const bytes = new Uint8Array(len);
-		for (let i = 0; i < len; i++) {
-			bytes[i] = binary_string.charCodeAt(i);
-		}
-		if (this.printLogs) {
-			console.debug(`LocalSave | Base64 converted to ArrayBuffer`, {
-				base64Length: base64.length,
-				bytesLength: bytes.length,
-			});
-		}
-		return bytes.buffer as ArrayBuffer;
-	}
-
-	/**
 	 * Retrieves the encryption key as a CryptoKey object.
 	 *
 	 * @internal
@@ -249,7 +249,7 @@ class LocalSave {
 			const concatenatedArray = new Uint8Array(ivUint8.byteLength + encryptedDataUint8.byteLength);
 			concatenatedArray.set(ivUint8, 0);
 			concatenatedArray.set(encryptedDataUint8, ivUint8.byteLength);
-			const base64Data = this.arrayBufferToBase64(concatenatedArray.buffer) as DBItemEncryptedBase64;
+			const base64Data = arrayBufferToBase64(concatenatedArray.buffer) as DBItemEncryptedBase64;
 			if (this.printLogs) {
 				console.debug(`LocalSave | Data encrypted successfully`, {
 					base64DataLength: base64Data.length,
@@ -280,7 +280,7 @@ class LocalSave {
 			if (!this.encryptKey) {
 				throw new Error(`LocalSave | Encryption key is not configured`);
 			}
-			const arrayBuffer = this.base64ToArrayBuffer(encryptedBase64Data);
+			const arrayBuffer = base64ToArrayBuffer(encryptedBase64Data);
 			const iv = new Uint8Array(arrayBuffer, 0, 12);
 			const generatedKey = await this.getEncryptKey();
 			const encryptedData = new Uint8Array(arrayBuffer, 12);
