@@ -1,5 +1,19 @@
 import CryptoJS from "crypto-js";
 
+/**
+ * Validates the encryption key.
+ *
+ * This function checks if the provided key has a valid length.
+ * The valid lengths for the encryption key are 16, 24, or 32 characters.
+ *
+ * @param key - The encryption key to validate.
+ *
+ * @returns `true` if the key length is valid, otherwise `false`.
+ */
+function validateEncryptKey(key: string) {
+	return key.length > 0 && [16, 24, 32].includes(key.length);
+}
+
 class LocalSave {
 	dbName: DBName = "LocalSave";
 	encryptKey?: EncryptKey;
@@ -14,6 +28,10 @@ class LocalSave {
 		this.expiryThreshold = config?.expiryThreshold ?? this.expiryThreshold;
 		this.clearOnDecryptError = config?.clearOnDecryptError ?? this.clearOnDecryptError;
 		this.printLogs = config?.printLogs ?? this.printLogs;
+
+		if (!!config.encryptKey && !validateEncryptKey(config.encryptKey)) {
+			throw new Error("LocalSave | Encryption key should be of length 16, 24, or 32 characters");
+		}
 	}
 
 	/**
@@ -32,12 +50,17 @@ class LocalSave {
 			openRequest.onupgradeneeded = () => {
 				const db = openRequest.result;
 				if (this.printLogs) {
-					console.debug(`LocalSave | Database upgrade triggered for [dbName:${this.dbName} / version:${db.version}]`);
+					console.debug(`LocalSave | Database upgrade triggered`, {
+						dbName: this.dbName,
+						version: db.version,
+					});
 				}
 				for (const category of this.categories) {
 					if (!db.objectStoreNames.contains(category)) {
 						if (this.printLogs) {
-							console.debug(`LocalSave | Creating object store for [category:${category}]`);
+							console.debug(`LocalSave | Creating object store`, {
+								category,
+							});
 						}
 						db.createObjectStore(category);
 					}
@@ -45,9 +68,10 @@ class LocalSave {
 			};
 			openRequest.onsuccess = () => {
 				if (this.printLogs) {
-					console.debug(
-						`LocalSave | Database opened successfully [dbName:${this.dbName} / version:${openRequest.result.version}]`
-					);
+					console.debug(`LocalSave | Database opened successfully`, {
+						dbName: this.dbName,
+						version: openRequest.result.version,
+					});
 				}
 				return resolve(openRequest.result);
 			};
@@ -80,7 +104,12 @@ class LocalSave {
 		if (!db.objectStoreNames.contains(category) && this.categories.includes(category)) {
 			if (this.printLogs) {
 				console.debug(
-					`LocalSave | Requested object store not found in current database version [category:${category} / dbName:${this.dbName} / version:${db.version}].\nTriggering database upgrade to create object store.`
+					`LocalSave | Requested object store not found in current database version.\nTriggering database upgrade to create object store.`,
+					{
+						category,
+						dbName: this.dbName,
+						version: db.version,
+					}
 				);
 			}
 			const currVersion = db.version;
@@ -94,9 +123,12 @@ class LocalSave {
 		const transaction = db.transaction(category, mode);
 		const store = transaction.objectStore(category);
 		if (this.printLogs) {
-			console.debug(
-				`LocalSave | Object store retrieved from database [category:${category} / mode:${mode} / dbName:${this.dbName} / version:${db.version}]`
-			);
+			console.debug(`LocalSave | Object store retrieved from database`, {
+				category,
+				mode,
+				dbName: this.dbName,
+				version: db.version,
+			});
 		}
 		return store;
 	}
@@ -117,6 +149,12 @@ class LocalSave {
 		for (let i = 0; i < len; i++) {
 			binary += String.fromCharCode(bytes[i]);
 		}
+		if (this.printLogs) {
+			console.debug(`LocalSave | ArrayBuffer converted to Base64`, {
+				bufferLength: buffer.byteLength,
+				base64Length: binary.length,
+			});
+		}
 		return window.btoa(binary) as string;
 	}
 
@@ -135,6 +173,12 @@ class LocalSave {
 		const bytes = new Uint8Array(len);
 		for (let i = 0; i < len; i++) {
 			bytes[i] = binary_string.charCodeAt(i);
+		}
+		if (this.printLogs) {
+			console.debug(`LocalSave | Base64 converted to ArrayBuffer`, {
+				base64Length: base64.length,
+				bytesLength: bytes.length,
+			});
 		}
 		return bytes.buffer as ArrayBuffer;
 	}
@@ -156,7 +200,14 @@ class LocalSave {
 		}
 		const encoder = new TextEncoder();
 		const keyBytes = encoder.encode(this.encryptKey);
-		return await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+		const key = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+		if (this.printLogs) {
+			console.debug(`LocalSave | Encryption key retrieved successfully`, {
+				keyLength: this.encryptKey.length,
+				keyBytesLength: keyBytes.length,
+			});
+		}
+		return key;
 	}
 
 	/**
@@ -200,7 +251,9 @@ class LocalSave {
 			concatenatedArray.set(encryptedDataUint8, ivUint8.byteLength);
 			const base64Data = this.arrayBufferToBase64(concatenatedArray.buffer) as DBItemEncryptedBase64;
 			if (this.printLogs) {
-				console.debug(`LocalSave | Data encrypted successfully [base64DataLength:${base64Data.length}]`);
+				console.debug(`LocalSave | Data encrypted successfully`, {
+					base64DataLength: base64Data.length,
+				});
 			}
 			return base64Data;
 		} catch (error) {
@@ -241,7 +294,9 @@ class LocalSave {
 			);
 			const decryptedData = JSON.parse(new TextDecoder().decode(decryptedBufferData)) as DBItem;
 			if (this.printLogs) {
-				console.debug(`LocalSave | Data decrypted successfully [timestamp:${decryptedData.timestamp}]`);
+				console.debug(`LocalSave | Data decrypted successfully`, {
+					timestamp: decryptedData.timestamp,
+				});
 			}
 			return decryptedData;
 		} catch (error) {
@@ -278,9 +333,18 @@ class LocalSave {
 			return new Promise<true>((resolve, reject) => {
 				const putRequest = store.put(payload, itemKey);
 				putRequest.onsuccess = () => {
+					if (this.printLogs) {
+						console.debug(`LocalSave | Data stored successfully`, {
+							category,
+							itemKey,
+						});
+					}
 					resolve(true);
 				};
 				putRequest.onerror = () => {
+					if (this.printLogs) {
+						console.error(`LocalSave | Error storing data [category:${category} / key:${itemKey}]`, putRequest.error);
+					}
 					reject(putRequest.error);
 				};
 			});
@@ -310,13 +374,26 @@ class LocalSave {
 		return new Promise<DBItem | null>(async (resolve, reject) => {
 			const getRequest = store.get(itemKey);
 			getRequest.onsuccess = async () => {
-				const result = getRequest.result as DBItemEncryptedBase64 | DBItem | null;
+				let result = getRequest.result as DBItemEncryptedBase64 | DBItem | null;
 				if (!result) {
+					if (this.printLogs) {
+						console.debug(`LocalSave | No data was found`, {
+							category,
+							itemKey,
+						});
+					}
 					return resolve(null);
 				} else {
 					if (this.encryptKey) {
 						try {
 							const decryptedData = await this.decryptData(result as DBItemEncryptedBase64);
+							if (this.printLogs) {
+								console.debug(`LocalSave | Data retrieved successfully`, {
+									category,
+									itemKey,
+									timestamp: decryptedData.timestamp,
+								});
+							}
 							return resolve(decryptedData);
 						} catch (error) {
 							if (this.clearOnDecryptError) {
@@ -328,7 +405,15 @@ class LocalSave {
 							}
 						}
 					} else {
-						return resolve(result as DBItem);
+						result = result as DBItem;
+						if (this.printLogs) {
+							console.debug(`LocalSave | Data retrieved successfully`, {
+								category,
+								itemKey,
+								timestamp: result.timestamp,
+							});
+						}
+						return resolve(result);
 					}
 				}
 			};
@@ -353,9 +438,21 @@ class LocalSave {
 			this.getStore(category, "readwrite").then((store) => {
 				const deleteRequest = store.delete(itemKey);
 				deleteRequest.onsuccess = () => {
+					if (this.printLogs) {
+						console.debug(`LocalSave | Data removed successfully`, {
+							category,
+							itemKey,
+						});
+					}
 					return resolve(true);
 				};
 				deleteRequest.onerror = () => {
+					if (this.printLogs) {
+						console.error(
+							`LocalSave | Error removing data [category:${category} / key:${itemKey}]`,
+							deleteRequest.error
+						);
+					}
 					return reject(deleteRequest.error);
 				};
 			});
@@ -376,9 +473,22 @@ class LocalSave {
 			this.getStore(category, "readwrite").then((store) => {
 				const clearRequest = store.clear();
 				clearRequest.onsuccess = () => {
+					if (this.printLogs) {
+						console.debug(`LocalSave | Data cleared successfully`, {
+							category,
+							dbName: this.dbName,
+							version: store.transaction.db.version,
+						});
+					}
 					return resolve(true);
 				};
 				clearRequest.onerror = () => {
+					if (this.printLogs) {
+						console.error(
+							`LocalSave | Error clearing data [category:${category} / dbName:${this.dbName} / version:${store.transaction.db.version}]`,
+							clearRequest.error
+						);
+					}
 					return reject(clearRequest.error);
 				};
 			});
@@ -406,9 +516,21 @@ class LocalSave {
 				const keys = await new Promise<IDBValidKey[]>((resolve, reject) => {
 					const keysRequest = store.getAllKeys();
 					keysRequest.onsuccess = () => {
+						if (this.printLogs) {
+							console.debug(`LocalSave | Keys retrieved successfully for expiring data`, {
+								category,
+								keys: keysRequest.result,
+							});
+						}
 						resolve(keysRequest.result);
 					};
 					keysRequest.onerror = () => {
+						if (this.printLogs) {
+							console.error(
+								`LocalSave | Error getting keys for expiring data [category:${category}]`,
+								keysRequest.error
+							);
+						}
 						reject(keysRequest.error);
 					};
 				});
@@ -416,9 +538,11 @@ class LocalSave {
 					const item = await this.get(category, key);
 					if (item && item.timestamp < checkDate) {
 						if (this.printLogs) {
-							console.debug(
-								`LocalSave | Removing expired data [category:${category} / key:${key} / timestamp:${item.timestamp}]`
-							);
+							console.debug(`LocalSave | Removing expired data`, {
+								category,
+								key,
+								timestamp: item.timestamp,
+							});
 						}
 						await this.remove(category, key);
 					}
@@ -443,8 +567,21 @@ class LocalSave {
 	async destroy() {
 		return new Promise<true>((resolve, reject) => {
 			const deleteRequest = indexedDB.deleteDatabase(this.dbName);
-			deleteRequest.onsuccess = () => resolve(true);
-			deleteRequest.onerror = () => reject(deleteRequest.error);
+			deleteRequest.onsuccess = () => {
+				if (this.printLogs) {
+					console.debug(`LocalSave | Database deleted successfully`, {
+						dbName: this.dbName,
+						version: deleteRequest.result,
+					});
+				}
+				resolve(true);
+			};
+			deleteRequest.onerror = () => {
+				if (this.printLogs) {
+					console.error(`LocalSave | Error deleting database [dbName:${this.dbName}]`);
+				}
+				reject(deleteRequest.error);
+			};
 		});
 	}
 }
