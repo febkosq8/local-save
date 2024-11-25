@@ -7,7 +7,7 @@
 ## Features
 
 -   **Lightweight & Widespread Support:** No external dependencies and works in all modern browsers.
--   **TypeScript Support :** Written in TypeScript with type definitions.
+-   **TypeScript Support :** Written in TypeScript for maximum type-safety and a great developer experience.
 -   **Encryption Support :** Uses [SubtleCrypto](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto) for secure data encryption with [AES-GCM](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt#aes-gcm) algorithm.
 -   **Category Management :** Organize data into predefined categories.
 -   **Data Expiry :** Allows setting an expiration threshold for data and a method to clear expired data.
@@ -31,7 +31,7 @@ npm install @febkosq8/local-save
 | Option Key                | Type       | Default        | Description                                                                                                                                            |
 | ------------------------- | ---------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **_dbName_**              | `string`   | `"LocalSave"`  | Name of the IndexedDB database.                                                                                                                        |
-| **_encryptKey_**          | `string`   | `undefined`    | Encryption key that should be either [16, 24, or 32] characters to be used for AES-GCM encryption. If not provided, data will be stored in plain text. |
+| **_encryptionKey_**       | `string`   | `undefined`    | Encryption key that should be either [16, 24, or 32] characters to be used for AES-GCM encryption. If not provided, data will be stored in plain text. |
 | **_categories_**          | `string[]` | `["userData"]` | Array of categories (Object store names).                                                                                                              |
 | **_expiryThreshold_**     | `number`   | `30`           | Data expiration threshold in days.                                                                                                                     |
 | **_clearOnDecryptError_** | `boolean`  | `true`         | Whether to clear a category if decryption fails.                                                                                                       |
@@ -45,14 +45,14 @@ Create a new instance of `LocalSave` with the available configuration options
 import LocalSave from "@febkosq8/local-save";
 ...
 const lsConfig = {
-  encryptKey: "MyEncryptionKeyThatIs32CharsLong", // Encryption key for data
+  encryptionKey: "MyEncryptionKeyThatIs32CharsLong", // Encryption key for data
   categories: ["userData", "settings"], // Define categories for data storage
   expiryThreshold: 14, // Clear data older than 14 days
 };
 const localSave = new LocalSave(lsConfig);
 ```
 
-### Set Data
+### Storing data
 
 Set data in a category
 
@@ -60,7 +60,7 @@ Set data in a category
 await localSave.set('userData', 'user001', { name: 'John Doe', age: 30 });
 ```
 
-### Get Data
+### Fetching data
 
 Get data from a category
 
@@ -76,7 +76,7 @@ try {
 }
 ```
 
-### Remove Data
+### Removing data
 
 Remove data from a category
 
@@ -84,7 +84,7 @@ Remove data from a category
 await localSave.remove('userData', 'user001');
 ```
 
-### Clear Category
+### Clearing a category
 
 Clear all data from a category
 
@@ -92,7 +92,7 @@ Clear all data from a category
 await localSave.clear('userData');
 ```
 
-### Clear Expired Data
+### Clearing expired data
 
 Clear all expired data from all categories
 
@@ -102,7 +102,7 @@ Clear all expired data from all categories
 await localSave.expire(14); // Clear data older than 14 days from all categories
 ```
 
-### Destroy Whole Database
+### Destroying the entire database
 
 Clear all data from all categories and delete the database
 
@@ -110,7 +110,7 @@ Clear all data from all categories and delete the database
 await localSave.destroy();
 ```
 
-### Decrypt Data Manually
+### Decrypting data manually
 
 Decrypt data using the encryption key
 This is useful when you want to decrypt the `DBItemEncryptedBase64` string manually without using the `get` method

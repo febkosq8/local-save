@@ -1,5 +1,3 @@
-/** @format */
-
 export default class Logger {
     constructor() {
         throw new Error('This class cannot be instantiated.');

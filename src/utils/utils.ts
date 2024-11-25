@@ -4,12 +4,11 @@
  * This function checks if the provided key has a valid length.
  * The valid lengths for the encryption key are 16, 24, or 32 characters.
  *
- * @format
  * @param key - The encryption key to validate.
  * @returns `true` if the key length is valid, otherwise `false`.
  */
 
-export function validateEncryptKey(key: string) {
+export function isValidEncryptionKey(key: string) {
     return key.length > 0 && [16, 24, 32].includes(key.length);
 }
 

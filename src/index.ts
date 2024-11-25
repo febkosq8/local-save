@@ -1,27 +1,25 @@
-/** @format */
-
-import LocalSaveError from './utils/LocalSaveError';
-import Logger from './utils/logger';
-import { arrayBufferToBase64, base64ToArrayBuffer, validateEncryptKey as isValidEncryptionKey } from './utils/utils';
+import LocalSaveError from '@local-save/utils/LocalSaveError';
+import Logger from '@local-save/utils/logger';
+import { arrayBufferToBase64, base64ToArrayBuffer, isValidEncryptionKey } from '@local-save/utils/utils';
 
 class LocalSave {
     dbName: DBName = 'LocalSave';
-    encryptionKey?: EncryptKey;
+    encryptionKey?: EncryptionKey;
     categories: Category[] = ['userData'];
     expiryThreshold: number = 30;
     clearOnDecryptError: boolean = true;
     printLogs: boolean = false;
     constructor(config: Config) {
         this.dbName = config?.dbName ?? this.dbName;
-        this.encryptionKey = config?.encryptKey;
+        this.encryptionKey = config?.encryptionKey;
         this.categories = config?.categories ?? this.categories;
         this.expiryThreshold = config?.expiryThreshold ?? this.expiryThreshold;
         this.clearOnDecryptError = config?.clearOnDecryptError ?? this.clearOnDecryptError;
         this.printLogs = config?.printLogs ?? this.printLogs;
 
-        if (!!config.encryptKey && !isValidEncryptionKey(config.encryptKey)) {
+        if (!!config.encryptionKey && !isValidEncryptionKey(config.encryptionKey)) {
             Logger.warn(`Encryption key should be of length 16, 24, or 32 characters`, {
-                keyLength: config.encryptKey.length,
+                keyLength: config.encryptionKey.length,
             });
         }
     }
@@ -524,7 +522,7 @@ class LocalSave {
     }
 }
 export type DBName = string;
-export type EncryptKey = string;
+export type EncryptionKey = string;
 export type Category = string;
 export interface DBItem {
     timestamp: number;
@@ -546,7 +544,7 @@ export interface Config {
      *
      * @default undefined
      */
-    encryptKey?: EncryptKey;
+    encryptionKey?: EncryptionKey;
     /**
      * The categories to use for storing data
      * You can use these to separate different types of data
