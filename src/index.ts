@@ -5,13 +5,15 @@ class LocalSave {
 	encryptKey?: EncryptKey;
 	categories: Category[] = ["userData"];
 	expiryThreshold: number = 30;
-	printDebug: Boolean = false;
+	clearOnDecryptError: Boolean = true;
+	printLogs: Boolean = false;
 	constructor(config: Config) {
 		this.dbName = config?.dbName ?? this.dbName;
 		this.encryptKey = config?.encryptKey;
 		this.categories = config?.categories ?? this.categories;
 		this.expiryThreshold = config?.expiryThreshold ?? this.expiryThreshold;
-		this.printDebug = config?.printDebug ?? this.printDebug;
+		this.clearOnDecryptError = config?.clearOnDecryptError ?? this.clearOnDecryptError;
+		this.printLogs = config?.printLogs ?? this.printLogs;
 	}
 
 	/**
@@ -19,24 +21,39 @@ class LocalSave {
 	 * It handles the database versioning and ensures that the required object stores are created if they do not exist.
 	 *
 	 * @internal
+	 * @param version - The version of the database to open. Optional.
 	 * @returns {Promise<IDBDatabase>} A promise that resolves to the opened `IDBDatabase` instance.
 	 */
-	private openDB(): Promise<IDBDatabase> {
+	private openDB(version?: number): Promise<IDBDatabase> {
 		return new Promise<IDBDatabase>((resolve, reject) => {
-			const openRequest = indexedDB.open(this.dbName, 1);
+			const openRequest = indexedDB.open(this.dbName, version);
 			openRequest.onupgradeneeded = () => {
 				const db = openRequest.result;
+				if (this.printLogs) {
+					console.debug(`LocalSave | Database upgrade triggered for [dbName:${this.dbName} / version:${db.version}]`);
+				}
 				for (const category of this.categories) {
 					if (!db.objectStoreNames.contains(category)) {
+						if (this.printLogs) {
+							console.debug(`LocalSave | Creating object store for [category:${category}]`);
+						}
 						db.createObjectStore(category);
 					}
 				}
 			};
 			openRequest.onsuccess = () => {
-				resolve(openRequest.result);
+				if (this.printLogs) {
+					console.debug(
+						`LocalSave | Database opened successfully [dbName:${this.dbName} / version:${openRequest.result.version}]`
+					);
+				}
+				return resolve(openRequest.result);
 			};
 			openRequest.onerror = () => {
-				reject(openRequest.error);
+				if (this.printLogs) {
+					console.error(`LocalSave | Error opening database [dbName:${this.dbName}]`, openRequest.error);
+				}
+				return reject(openRequest.error);
 			};
 		});
 	}
@@ -45,51 +62,91 @@ class LocalSave {
 	 * Retrieves an object store from the IndexedDB database.
 	 * It handles the transaction mode and ensures that the requested object store is returned.
 	 *
+	 * If the object store does not exist in the database and the category is valid, it will create a new version of the database with the object store.
+	 *
 	 * @internal
 	 * @param category - The name of the object store to retrieve.
 	 * @param mode - The mode for the transaction (default is "readonly").
 	 * @returns {Promise<IDBObjectStore>} A promise that resolves to the requested object store.
 	 */
 	private async getStore(category: Category, mode: IDBTransactionMode = "readonly"): Promise<IDBObjectStore> {
-		const db = await this.openDB();
+		let db = await this.openDB();
+		if (!db.objectStoreNames.contains(category) && this.categories.includes(category)) {
+			if (this.printLogs) {
+				console.debug(
+					`LocalSave | Requested object store not found in current database version [category:${category} / dbName:${this.dbName} / version:${db.version}].\nTriggering database upgrade to create object store.`
+				);
+			}
+			const currVersion = db.version;
+			db.close();
+			db = await this.openDB(currVersion + 1);
+		}
 		const transaction = db.transaction(category, mode);
-		return transaction.objectStore(category);
+		const store = transaction.objectStore(category);
+		if (this.printLogs) {
+			console.debug(
+				`LocalSave | Object store retrieved from database [category:${category} / mode:${mode} / dbName:${this.dbName} / version:${db.version}]`
+			);
+		}
+		return store;
 	}
 
 	/**
-	 * Encrypts the provided data using the configured encryption key.
-	 * If no encryption key is configured, it returns the data as is.
+	 * Encrypts the provided data using AES encryption.
 	 *
 	 * @internal
-	 * @param data - The data to encrypt, as a string.
-	 * @returns {string | CryptoJS.lib.WordArray} The encrypted data as a string, or the original data if no encryption key is configured.
+	 * @param data - The data to be encrypted. It can be a CryptoJS.lib.WordArray or a string.
+	 * @returns An object containing the result of the encryption process:
+	 * - `success`: A boolean indicating whether the encryption was successful.
+	 * - `data`: The encrypted data as a string, if the encryption was successful.
+	 * - `error`: An Error object, if the encryption failed.
 	 */
-	private encryptData(data: CryptoJS.lib.WordArray | string): string | CryptoJS.lib.WordArray {
-		if (!this.encryptKey) {
-			return data;
+	private encryptData(data: CryptoJS.lib.WordArray | string): {
+		success: boolean;
+		data?: CryptoJS.lib.WordArray | string;
+		error?: Error | unknown;
+	} {
+		try {
+			if (!this.encryptKey) {
+				return { success: true, data };
+			}
+			return { success: true, data: CryptoJS.AES.encrypt(data, this.encryptKey).toString() };
+		} catch (error) {
+			if (this.printLogs) {
+				console.error("LocalSave | Failed to encrypt data", error);
+			}
+			return { success: false, error };
 		}
-		return CryptoJS.AES.encrypt(data, this.encryptKey).toString();
 	}
 	/**
 	 * Decrypts the provided data using the configured encryption key.
 	 * If no encryption key is configured, it returns the data as is.
 	 *
-	 * @internal
 	 * @param data - The data to decrypt, as a string or CryptoJS.lib.CipherParams.
-	 * @returns {string | null} The decrypted data as a string, or null if decryption fails.
+	 * @returns An object containing the result of the decryption process:
+	 * - `success`: A boolean indicating whether the decryption was successful.
+	 * - `data`: The decrypted data as a string, if the decryption was successful.
+	 * - `error`: An Error object, if the decryption failed.
 	 */
-	private decryptData(data: CryptoJS.lib.CipherParams | string): string | null {
+	decryptData(data: CryptoJS.lib.CipherParams | string): {
+		success: boolean;
+		data?: CryptoJS.lib.CipherParams | string;
+		error?: Error | unknown;
+	} {
 		try {
 			if (!this.encryptKey) {
-				return data as string;
+				return { success: true, data };
 			}
 			const decryptedBytes = CryptoJS.AES.decrypt(data, this.encryptKey);
-			return decryptedBytes.toString(CryptoJS.enc.Utf8);
-		} catch (e) {
-			if (this.printDebug) {
-				console.error("Error while decrypting data", e);
+			return { success: true, data: decryptedBytes.toString(CryptoJS.enc.Utf8) };
+		} catch (error) {
+			if (this.printLogs) {
+				console.error("LocalSave | Failed to decrypt data", error);
 			}
-			return null;
+			return {
+				success: false,
+				error,
+			};
 		}
 	}
 
@@ -100,22 +157,38 @@ class LocalSave {
 	 * @param category - The category under which the data should be stored.
 	 * @param itemKey - The key to identify the stored data.
 	 * @param data - The data to be stored.
-	 * @returns {Promise<true>} A promise that resolves to true if the data is successfully stored, or rejects with an error if the operation fails.
+	 * @returns {Promise<{ success: boolean; error?: Error | unknown }>} A promise that resolves to an object with the following properties:
+	 * - `success`: A boolean indicating whether the operation was successful.
+	 * - `error`: An Error object, if the operation failed.
 	 */
-	async set(category: Category, itemKey: IDBValidKey, data: unknown): Promise<true> {
+	async set(
+		category: Category,
+		itemKey: IDBValidKey,
+		data: unknown
+	): Promise<{
+		success: boolean;
+		error?: Error | unknown;
+	}> {
 		const payload = {
 			timestamp: Date.now(),
 			data,
 		};
-		return new Promise<true>(async (resolve, reject) => {
+		return new Promise<{ success: boolean; error?: Error | unknown }>(async (resolve, reject) => {
 			this.getStore(category, "readwrite").then((store) => {
-				const encryptedData = this.encryptKey ? this.encryptData(JSON.stringify(payload)) : payload;
-				const putRequest = store.put(encryptedData, itemKey);
+				let finalPayload = payload;
+				if (this.encryptKey) {
+					const encryptedPayload = this.encryptData(JSON.stringify(payload));
+					if (!encryptedPayload.success) {
+						return reject(encryptedPayload);
+					}
+					finalPayload = encryptedPayload.data;
+				}
+				const putRequest = store.put(finalPayload, itemKey);
 				putRequest.onsuccess = () => {
-					resolve(true);
+					return resolve({ success: true });
 				};
 				putRequest.onerror = () => {
-					reject(putRequest.error);
+					return reject({ success: false, error: putRequest.error });
 				};
 			});
 		});
@@ -138,30 +211,30 @@ class LocalSave {
 			this.getStore(category).then((store) => {
 				const getRequest = store.get(itemKey);
 				getRequest.onsuccess = () => {
-					try {
-						if (!getRequest.result) {
-							resolve(null);
-						} else {
-							const decryptedData = this.encryptKey ? this.decryptData(getRequest.result) : getRequest.result;
-							if (!decryptedData) {
-								resolve(null);
+					const result = getRequest.result;
+					if (!result) {
+						return resolve(null);
+					} else {
+						if (this.encryptKey) {
+							const decryptedData = this.decryptData(result);
+							if (!decryptedData.success) {
+								if (this.clearOnDecryptError) {
+									if (this.printLogs) {
+										console.error(`LocalSave | Error decrypting data. Clearing [category:${category}]`);
+									}
+									this.clear(category);
+								}
+								return reject(null);
 							} else {
-								resolve((this.encryptKey ? JSON.parse(decryptedData) : decryptedData) as DBItem);
+								return resolve(JSON.parse(decryptedData) as DBItem);
 							}
+						} else {
+							return resolve(result as DBItem);
 						}
-					} catch (e) {
-						if (this.printDebug) {
-							console.error(
-								`Error while fetching data for '${itemKey}' from '${category}'.\nClearing all data for '${category}'`,
-								e
-							);
-						}
-						store.clear();
-						reject(e);
 					}
 				};
 				getRequest.onerror = () => {
-					reject(getRequest.error);
+					return reject(getRequest.error);
 				};
 			});
 		});
@@ -172,17 +245,19 @@ class LocalSave {
 	 *
 	 * @param {Category} category - The category from which the item should be removed.
 	 * @param {IDBValidKey} itemKey - The key of the item to be removed.
-	 * @returns {Promise<boolean>} A promise that resolves to `true` if the item was successfully removed, or rejects with an error if the removal failed.
+	 * @returns {Promise<{ success: boolean; error?: Error | unknown }>} A promise that resolves to an object with the following properties:
+	 * - `success`: A boolean indicating whether the operation was successful.
+	 * - `error`: An Error object, if the operation failed.
 	 */
-	async remove(category: Category, itemKey: IDBValidKey): Promise<boolean> {
+	async remove(category: Category, itemKey: IDBValidKey): Promise<{ success: boolean; error?: Error | unknown }> {
 		return new Promise((resolve, reject) => {
 			this.getStore(category, "readwrite").then((store) => {
 				const deleteRequest = store.delete(itemKey);
 				deleteRequest.onsuccess = () => {
-					resolve(true);
+					return resolve({ success: true });
 				};
 				deleteRequest.onerror = () => {
-					reject(deleteRequest.error);
+					return reject({ success: false, error: deleteRequest.error });
 				};
 			});
 		});
@@ -192,17 +267,19 @@ class LocalSave {
 	 * Clears all entries in the specified category.
 	 *
 	 * @param category - The category to clear.
-	 * @returns {Promise<boolean>} A promise that resolves to `true` if the operation is successful, or rejects with an error if it fails.
+	 * @returns {Promise<{ success: boolean; error?: Error | unknown }>} A promise that resolves to an object with the following properties:
+	 * - `success`: A boolean indicating whether the operation was successful.
+	 * - `error`: An Error object, if the operation failed.
 	 */
-	async clear(category: Category): Promise<boolean> {
+	async clear(category: Category): Promise<{ success: boolean; error?: Error | unknown }> {
 		return new Promise((resolve, reject) => {
 			this.getStore(category, "readwrite").then((store) => {
 				const clearRequest = store.clear();
 				clearRequest.onsuccess = () => {
-					resolve(true);
+					return resolve({ success: true });
 				};
 				clearRequest.onerror = () => {
-					reject(clearRequest.error);
+					return reject({ success: false, error: clearRequest.error });
 				};
 			});
 		});
@@ -240,9 +317,9 @@ class LocalSave {
 						await this.remove(category, key);
 					}
 				}
-			} catch (e) {
-				if (this.printDebug) {
-					console.error(`Error expiring data older than '${days}' days`, e);
+			} catch (error) {
+				if (this.printLogs) {
+					console.error(`Error expiring data older than '${days}' days`, error);
 				}
 			}
 		}
@@ -251,13 +328,19 @@ class LocalSave {
 	/**
 	 * Asynchronously destroys the database by deleting it from IndexedDB.
 	 *
-	 * @returns {Promise<Boolean>} A promise that resolves when the database is deleted.
+	 * @returns {Promise<{ success: boolean; error?: Error | unknown }>} A promise that resolves to an object with the following properties:
+	 * - `success`: A boolean indicating whether the operation was successful.
+	 * - `error`: An Error object, if the operation failed.
 	 */
-	async destroy(): Promise<Boolean> {
-		return new Promise<Boolean>((resolve, reject) => {
+	async destroy(): Promise<{ success: boolean; error?: Error | unknown }> {
+		return new Promise<{ success: boolean; error?: Error | unknown }>((resolve, reject) => {
 			const deleteRequest = indexedDB.deleteDatabase(this.dbName);
-			deleteRequest.onsuccess = () => resolve(true);
-			deleteRequest.onerror = () => reject(deleteRequest.error);
+			deleteRequest.onsuccess = () => resolve({ success: true });
+			deleteRequest.onerror = () =>
+				reject({
+					success: false,
+					error: deleteRequest.error,
+				});
 		});
 	}
 }
@@ -278,7 +361,6 @@ export interface Config {
 	/**
 	 * The key to use for encrypting and decrypting data
 	 * Not providing this will store data in plain text
-	 * If you provide this, make sure to set it before using any other functions
 	 * No spaces are allowed in the key
 	 *
 	 * @default undefined
@@ -297,12 +379,20 @@ export interface Config {
 	 *
 	 * @default 30
 	 */
-	expiryThreshold?: number;
+	expiryThreshold: number;
 	/**
-	 * Whether to print debug logs
+	 * Whether to clear all data for a category if an error occurs while decrypting data
+	 * Most likely reason of error is due to an incorrect encryption key
+	 *
+	 * @default true
+	 */
+	clearOnDecryptError: Boolean;
+	/**
+	 * Whether to print logs
+	 * Includes debug and errors logs
 	 *
 	 * @default false
 	 */
-	printDebug: Boolean;
+	printLogs: Boolean;
 }
 export default LocalSave;
