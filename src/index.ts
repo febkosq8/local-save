@@ -101,16 +101,12 @@ class LocalSave {
 	 *
 	 * @internal
 	 * @param data - The data to be encrypted. It can be a CryptoJS.lib.WordArray or a string.
-	 * @returns An object containing the result of the encryption process:
+	 * @returns {OperationReturnData} An object containing the result of the encryption process:
 	 * - `success`: A boolean indicating whether the encryption was successful.
 	 * - `data`: The encrypted data as a string, if the encryption was successful.
 	 * - `error`: An Error object, if the encryption failed.
 	 */
-	private encryptData(data: CryptoJS.lib.WordArray | string): {
-		success: boolean;
-		data?: CryptoJS.lib.WordArray | string;
-		error?: Error | unknown;
-	} {
+	private encryptData(data: CryptoJS.lib.WordArray | string): OperationReturnData {
 		try {
 			if (!this.encryptKey) {
 				return { success: true, data };
@@ -128,7 +124,7 @@ class LocalSave {
 	 * If no encryption key is configured, it returns the data as is.
 	 *
 	 * @param data - The data to decrypt, as a string or CryptoJS.lib.CipherParams.
-	 * @returns An object containing the result of the decryption process:
+	 * @returns {OperationReturnData} An object containing the result of the decryption process:
 	 * - `success`: A boolean indicating whether the decryption was successful.
 	 * - `data`: The decrypted data as a string, if the decryption was successful.
 	 * - `error`: An Error object, if the decryption failed.
@@ -162,7 +158,7 @@ class LocalSave {
 	 * @param category - The category under which the data should be stored.
 	 * @param itemKey - The key to identify the stored data.
 	 * @param data - The data to be stored.
-	 * @returns {Promise<{ success: boolean; error?: Error | unknown }>} A promise that resolves to an object with the following properties:
+	 * @returns {Promise<OperationReturnData>} A promise that resolves to an object with the following properties:
 	 * - `success`: A boolean indicating whether the operation was successful.
 	 * - `error`: An Error object, if the operation failed.
 	 */
@@ -178,15 +174,15 @@ class LocalSave {
 			timestamp: Date.now(),
 			data,
 		};
-		return new Promise<{ success: boolean; error?: Error | unknown }>(async (resolve, reject) => {
+		return new Promise<OperationReturnData>(async (resolve, reject) => {
 			this.getStore(category, "readwrite").then((store) => {
-				let finalPayload = payload;
+				let finalPayload: DBItem | DBItemEncrypted = payload;
 				if (this.encryptKey) {
 					const encryptedPayload = this.encryptData(JSON.stringify(payload));
 					if (!encryptedPayload.success) {
 						return reject(encryptedPayload);
 					}
-					finalPayload = encryptedPayload.data;
+					finalPayload = encryptedPayload.data as DBItemEncrypted;
 				}
 				const putRequest = store.put(finalPayload, itemKey);
 				putRequest.onsuccess = () => {
@@ -221,7 +217,7 @@ class LocalSave {
 						return resolve(null);
 					} else {
 						if (this.encryptKey) {
-							const decryptedData = this.decryptData(result);
+							const decryptedData: OperationReturnData = this.decryptData(result);
 							if (!decryptedData.success) {
 								if (this.clearOnDecryptError) {
 									if (this.printLogs) {
@@ -231,7 +227,7 @@ class LocalSave {
 								}
 								return reject(null);
 							} else {
-								return resolve(JSON.parse(decryptedData) as DBItem);
+								return resolve(JSON.parse(decryptedData.data as string) as DBItem);
 							}
 						} else {
 							return resolve(result as DBItem);
@@ -250,11 +246,11 @@ class LocalSave {
 	 *
 	 * @param {Category} category - The category from which the item should be removed.
 	 * @param {IDBValidKey} itemKey - The key of the item to be removed.
-	 * @returns {Promise<{ success: boolean; error?: Error | unknown }>} A promise that resolves to an object with the following properties:
+	 * @returns {Promise<OperationReturnData>} A promise that resolves to an object with the following properties:
 	 * - `success`: A boolean indicating whether the operation was successful.
 	 * - `error`: An Error object, if the operation failed.
 	 */
-	async remove(category: Category, itemKey: IDBValidKey): Promise<{ success: boolean; error?: Error | unknown }> {
+	async remove(category: Category, itemKey: IDBValidKey): Promise<OperationReturnData> {
 		return new Promise((resolve, reject) => {
 			this.getStore(category, "readwrite").then((store) => {
 				const deleteRequest = store.delete(itemKey);
@@ -272,11 +268,11 @@ class LocalSave {
 	 * Clears all entries in the specified category.
 	 *
 	 * @param category - The category to clear.
-	 * @returns {Promise<{ success: boolean; error?: Error | unknown }>} A promise that resolves to an object with the following properties:
+	 * @returns {Promise<OperationReturnData>} A promise that resolves to an object with the following properties:
 	 * - `success`: A boolean indicating whether the operation was successful.
 	 * - `error`: An Error object, if the operation failed.
 	 */
-	async clear(category: Category): Promise<{ success: boolean; error?: Error | unknown }> {
+	async clear(category: Category): Promise<OperationReturnData> {
 		return new Promise((resolve, reject) => {
 			this.getStore(category, "readwrite").then((store) => {
 				const clearRequest = store.clear();
@@ -296,13 +292,15 @@ class LocalSave {
 	 * This method iterates through all categories and removes items that have a timestamp
 	 * older than the specified number of days from the current date.
 	 *
-	 * @param {number} [days=30] - The number of days to use as the threshold for expiring data.
-	 *                             Defaults to expiryThreshold from config if not provided.
-	 * @returns {Promise<void>} - A promise that resolves when the expiration process is complete.
+	 * @param {number} [days=this.expiryThreshold] - The number of days to use as the threshold for expiring data.
+	 * Defaults to expiryThreshold from config if not provided.
+	 * @returns {Promise<OperationReturnData>} A promise that resolves to an object with the following properties:
+	 * - `success`: A boolean indicating whether the operation was successful.
+	 * - `error`: An Error object, if the operation failed.
 	 *
 	 * @throws {Error} - Throws an error if there is an issue accessing the store or removing items.
 	 */
-	async expire(days: number = this.expiryThreshold): Promise<void> {
+	async expire(days: number = this.expiryThreshold): Promise<OperationReturnData> {
 		const checkDate = Date.now() - days * 86400000;
 		for (const category of this.categories) {
 			const store = await this.getStore(category);
@@ -326,19 +324,21 @@ class LocalSave {
 				if (this.printLogs) {
 					console.error(`Error expiring data older than '${days}' days`, error);
 				}
+				return { success: false, error };
 			}
 		}
+		return { success: true };
 	}
 
 	/**
 	 * Asynchronously destroys the database by deleting it from IndexedDB.
 	 *
-	 * @returns {Promise<{ success: boolean; error?: Error | unknown }>} A promise that resolves to an object with the following properties:
+	 * @returns {Promise<OperationReturnData>} A promise that resolves to an object with the following properties:
 	 * - `success`: A boolean indicating whether the operation was successful.
 	 * - `error`: An Error object, if the operation failed.
 	 */
-	async destroy(): Promise<{ success: boolean; error?: Error | unknown }> {
-		return new Promise<{ success: boolean; error?: Error | unknown }>((resolve, reject) => {
+	async destroy(): Promise<OperationReturnData> {
+		return new Promise<OperationReturnData>((resolve, reject) => {
 			const deleteRequest = indexedDB.deleteDatabase(this.dbName);
 			deleteRequest.onsuccess = () => resolve({ success: true });
 			deleteRequest.onerror = () =>
@@ -356,6 +356,21 @@ export type DBItem = {
 	timestamp: number;
 	data: unknown;
 };
+export type DBItemEncrypted = CryptoJS.lib.WordArray | string;
+export interface OperationReturnData {
+	/**
+	 * If the operation was successful
+	 */
+	success: boolean;
+	/**
+	 * If the operation was successful, the data if any
+	 */
+	data?: unknown;
+	/**
+	 * If the operation failed, the error
+	 */
+	error?: Error | unknown;
+}
 export interface Config {
 	/**
 	 * The name of the database to use for local save
