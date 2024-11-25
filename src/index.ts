@@ -21,10 +21,12 @@ class LocalSave {
 	 * It handles the database versioning and ensures that the required object stores are created if they do not exist.
 	 *
 	 * @internal
+	 *
 	 * @param version - The version of the database to open. Optional.
-	 * @returns {Promise<IDBDatabase>} A promise that resolves to the opened `IDBDatabase` instance.
+	 *
+	 * @returns A promise that resolves to the opened 'IDBDatabase' instance.
 	 */
-	private openDB(version?: number): Promise<IDBDatabase> {
+	private openDB(version?: number) {
 		return new Promise<IDBDatabase>((resolve, reject) => {
 			const openRequest = indexedDB.open(this.dbName, version);
 			openRequest.onupgradeneeded = () => {
@@ -65,12 +67,15 @@ class LocalSave {
 	 * If the object store does not exist in the database and the category is valid, it will create a new version of the database with the object store.
 	 *
 	 * @internal
+	 *
 	 * @param category - The name of the object store to retrieve.
 	 * @param mode - The mode for the transaction (default is "readonly").
-	 * @returns {Promise<IDBObjectStore>} A promise that resolves to the requested object store.
-	 * @throws Will throw an error if the object store does not exist in the database and the category is invalid
+	 *
+	 * @returns A promise that resolves to the requested object store.
+	 *
+	 * @throws {Error} Will throw an error if the object store does not exist in the database and the category is invalid
 	 */
-	private async getStore(category: Category, mode: IDBTransactionMode = "readonly"): Promise<IDBObjectStore> {
+	private async getStore(category: Category, mode: IDBTransactionMode = "readonly") {
 		let db = await this.openDB();
 		if (!db.objectStoreNames.contains(category) && this.categories.includes(category)) {
 			if (this.printLogs) {
@@ -97,57 +102,153 @@ class LocalSave {
 	}
 
 	/**
-	 * Encrypts the provided data using AES encryption.
+	 * Converts an ArrayBuffer to a Base64 encoded string.
 	 *
 	 * @internal
-	 * @param data - The data to be encrypted. It can be a CryptoJS.lib.WordArray or a string.
-	 * @returns {OperationReturnData} An object containing the result of the encryption process:
-	 * - `success`: A boolean indicating whether the encryption was successful.
-	 * - `data`: The encrypted data as a string, if the encryption was successful.
-	 * - `error`: An Error object, if the encryption failed.
+	 *
+	 * @param ArrayBuffer - The ArrayBuffer to convert.
+	 *
+	 * @returns The Base64 encoded string representation of the ArrayBuffer.
 	 */
-	private encryptData(data: CryptoJS.lib.WordArray | string): OperationReturnData {
+	private arrayBufferToBase64(buffer: ArrayBuffer) {
+		let binary = "";
+		const bytes = new Uint8Array(buffer);
+		const len = bytes.byteLength;
+		for (let i = 0; i < len; i++) {
+			binary += String.fromCharCode(bytes[i]);
+		}
+		return window.btoa(binary) as string;
+	}
+
+	/**
+	 * Converts a base64 encoded string to an ArrayBuffer.
+	 *
+	 * @internal
+	 *
+	 * @param base64 - The base64 encoded string to convert.
+	 *
+	 * @returns The resulting ArrayBuffer.
+	 */
+	private base64ToArrayBuffer(base64: string) {
+		const binary_string = window.atob(base64);
+		const len = binary_string.length;
+		const bytes = new Uint8Array(len);
+		for (let i = 0; i < len; i++) {
+			bytes[i] = binary_string.charCodeAt(i);
+		}
+		return bytes.buffer as ArrayBuffer;
+	}
+
+	/**
+	 * Retrieves the encryption key as a CryptoKey object.
+	 *
+	 * @internal
+	 * @returns A promise that resolves to a CryptoKey object.
+	 *
+	 * @throws {Error} If the encryption key is not configured.
+	 * @throws {Error} If the encryption key length is not 16, 24, or 32 characters.
+	 */
+	private async getEncryptKey() {
+		if (!this.encryptKey) {
+			throw new Error(`LocalSave | Encryption key is not configured`);
+		} else if (![16, 24, 32].includes(this.encryptKey.length)) {
+			throw new Error("LocalSave | Encryption key should be of length 16, 24, or 32 characters");
+		}
+		const encoder = new TextEncoder();
+		const keyBytes = encoder.encode(this.encryptKey);
+		return await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+	}
+
+	/**
+	 * Encrypts the provided data using AES-GCM encryption with the help of SubtleCrypto API.
+	 * Refer to https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt for more technical details.
+	 *
+	 * Generates a random 12-byte IV for each encryption.
+	 * Base64 encodes the IV and the encrypted data and returns the result as a string.
+	 *
+	 * If no encryption key is configured, it returns the data as is.
+	 *
+	 * @internal
+	 *
+	 * @param data The data to be encrypted. Should be an instance of DBItem.
+	 *
+	 * @returns A promise that resolves to the encrypted data as a base64 encoded string.
+	 *
+	 * @throws {Error} If the encryption key is not configured.
+	 * @throws {Error} If the encryption process fails.
+	 */
+	private async encryptData(data: DBItem) {
 		try {
 			if (!this.encryptKey) {
-				return { success: true, data };
+				throw new Error(`LocalSave | Encryption key is not configured`);
 			}
-			return { success: true, data: CryptoJS.AES.encrypt(data, this.encryptKey).toString() };
+			const iv = window.crypto.getRandomValues(new Uint8Array(12));
+			const generatedKey = await this.getEncryptKey();
+			const dataBuffer = new TextEncoder().encode(JSON.stringify(data));
+			const encryptedData = await window.crypto.subtle.encrypt(
+				{
+					name: "AES-GCM",
+					iv: iv,
+				},
+				generatedKey,
+				dataBuffer
+			);
+			const ivUint8 = new Uint8Array(iv);
+			const encryptedDataUint8 = new Uint8Array(encryptedData);
+			const concatenatedArray = new Uint8Array(ivUint8.byteLength + encryptedDataUint8.byteLength);
+			concatenatedArray.set(ivUint8, 0);
+			concatenatedArray.set(encryptedDataUint8, ivUint8.byteLength);
+			const base64Data = this.arrayBufferToBase64(concatenatedArray.buffer) as DBItemEncryptedBase64;
+			if (this.printLogs) {
+				console.debug(`LocalSave | Data encrypted successfully [base64DataLength:${base64Data.length}]`);
+			}
+			return base64Data;
 		} catch (error) {
 			if (this.printLogs) {
-				console.error("LocalSave | Failed to encrypt data", error);
+				console.error(`LocalSave | Data encryption failed`, error);
 			}
-			return { success: false, error };
+			throw error;
 		}
 	}
+
 	/**
 	 * Decrypts the provided data using the configured encryption key.
 	 * If no encryption key is configured, it returns the data as is.
 	 *
-	 * @param data - The data to decrypt, as a string or CryptoJS.lib.CipherParams.
-	 * @returns {OperationReturnData} An object containing the result of the decryption process:
-	 * - `success`: A boolean indicating whether the decryption was successful.
-	 * - `data`: The decrypted data as a string, if the decryption was successful.
-	 * - `error`: An Error object, if the decryption failed.
+	 * @param encryptedBase64Data The data to decrypt, as a string or CryptoJS.lib.CipherParams.
+	 *
+	 * @returns The decrypted data as an object.
+	 *
+	 * @throws {Error} If the encryption key is not configured.
+	 * @throws {Error} If the decryption process fails.
 	 */
-	decryptData(data: CryptoJS.lib.CipherParams | string): {
-		success: boolean;
-		data?: CryptoJS.lib.CipherParams | string;
-		error?: Error | unknown;
-	} {
+	async decryptData(encryptedBase64Data: string) {
 		try {
 			if (!this.encryptKey) {
-				return { success: true, data };
+				throw new Error(`LocalSave | Encryption key is not configured`);
 			}
-			const decryptedBytes = CryptoJS.AES.decrypt(data, this.encryptKey);
-			return { success: true, data: decryptedBytes.toString(CryptoJS.enc.Utf8) };
+			const arrayBuffer = this.base64ToArrayBuffer(encryptedBase64Data);
+			const iv = new Uint8Array(arrayBuffer, 0, 12);
+			const generatedKey = await this.getEncryptKey();
+			const encryptedData = new Uint8Array(arrayBuffer, 12);
+			const decryptedBufferData = await window.crypto.subtle.decrypt(
+				{
+					name: "AES-GCM",
+					iv,
+				},
+				generatedKey,
+				encryptedData
+			);
+			const decryptedData = JSON.parse(new TextDecoder().decode(decryptedBufferData)) as DBItem;
+			if (this.printLogs) {
+				console.debug(`LocalSave | Data decrypted successfully [timestamp:${decryptedData.timestamp}]`);
+			}
+			return decryptedData;
 		} catch (error) {
 			if (this.printLogs) {
-				console.error("LocalSave | Failed to decrypt data", error);
+				console.error(`LocalSave | Data decryption failed`, error);
 			}
-			return {
-				success: false,
-				error,
-			};
+			throw error;
 		}
 	}
 
@@ -155,110 +256,107 @@ class LocalSave {
 	 * Stores data in the specified category with the given item key.
 	 * If encryption key is configured, the data is encrypted first before being stored.
 	 *
-	 * @param category - The category under which the data should be stored.
-	 * @param itemKey - The key to identify the stored data.
-	 * @param data - The data to be stored.
-	 * @returns {Promise<OperationReturnData>} A promise that resolves to an object with the following properties:
-	 * - `success`: A boolean indicating whether the operation was successful.
-	 * - `error`: An Error object, if the operation failed.
+	 * @param category The category under which the data should be stored.
+	 * @param itemKey The key to identify the stored data.
+	 * @param data The data to be stored.
+	 *
+	 * @returns A promise that resolves to `true` if the operation was successful.
+	 *
+	 * @throws {Error} Will reject the promise if an error occurs during the saving process.
 	 */
-	async set(
-		category: Category,
-		itemKey: IDBValidKey,
-		data: unknown
-	): Promise<{
-		success: boolean;
-		error?: Error | unknown;
-	}> {
-		const payload = {
+	async set(category: Category, itemKey: IDBValidKey, data: unknown) {
+		let payload: DBItem | DBItemEncryptedBase64 = {
 			timestamp: Date.now(),
 			data,
-		};
-		return new Promise<OperationReturnData>(async (resolve, reject) => {
-			this.getStore(category, "readwrite").then((store) => {
-				let finalPayload: DBItem | DBItemEncrypted = payload;
-				if (this.encryptKey) {
-					const encryptedPayload = this.encryptData(JSON.stringify(payload));
-					if (!encryptedPayload.success) {
-						return reject(encryptedPayload);
-					}
-					finalPayload = encryptedPayload.data as DBItemEncrypted;
-				}
-				const putRequest = store.put(finalPayload, itemKey);
+		} as DBItem;
+		try {
+			if (this.encryptKey) {
+				const encryptedPayload = await this.encryptData(payload);
+				payload = encryptedPayload;
+			}
+			const store = await this.getStore(category, "readwrite");
+			return new Promise<true>((resolve, reject) => {
+				const putRequest = store.put(payload, itemKey);
 				putRequest.onsuccess = () => {
-					return resolve({ success: true });
+					resolve(true);
 				};
 				putRequest.onerror = () => {
-					return reject({ success: false, error: putRequest.error });
+					reject(putRequest.error);
 				};
 			});
-		});
+		} catch (error) {
+			if (this.printLogs) {
+				console.error(`LocalSave | Data storing failed`, error);
+			}
+			throw error;
+		}
 	}
 
 	/**
 	 * Retrieves an item from the specified category in the IndexedDB.
-	 * If the item is not found, the promise resolves to `null`.
-	 * The item is decrypted if an encryption key is configured.
-	 * If an error occurs during the retrieval process, the promise is rejected. In this case, all data for the category is cleared.
+	 * If the item is not found, the promise resolves to 'null'.
+	 * If an encryption key is configured, the data is decrypted before being returned.
 	 *
-	 * @param category - The category from which to retrieve the item.
-	 * @param itemKey - The key of the item to retrieve.
-	 * @returns {Promise<DBItem | null>}  A promise that resolves to the retrieved item or null if not found.
+	 * @param category The category from which to retrieve the item.
+	 * @param itemKey The key of the item to retrieve.
 	 *
-	 * @throws Will reject the promise if an error occurs during the retrieval process.
+	 * @returns A promise that resolves to the retrieved item or null if not found.
+	 *
+	 * @throws {Error} Will reject the promise if an error occurs while decrypting the data. Depending on the 'clearOnDecryptError' configuration, all data for the category can be cleared.
+	 * @throws {Error} Will reject the promise if an error occurs during the retrieval process.
 	 */
-	get(category: Category, itemKey: IDBValidKey): Promise<DBItem | null> {
+	async get(category: Category, itemKey: IDBValidKey) {
+		const store = await this.getStore(category);
 		return new Promise<DBItem | null>(async (resolve, reject) => {
-			this.getStore(category).then((store) => {
-				const getRequest = store.get(itemKey);
-				getRequest.onsuccess = () => {
-					const result = getRequest.result;
-					if (!result) {
-						return resolve(null);
-					} else {
-						if (this.encryptKey) {
-							const decryptedData: OperationReturnData = this.decryptData(result);
-							if (!decryptedData.success) {
-								if (this.clearOnDecryptError) {
-									if (this.printLogs) {
-										console.error(`LocalSave | Error decrypting data. Clearing [category:${category}]`);
-									}
-									this.clear(category);
+			const getRequest = store.get(itemKey);
+			getRequest.onsuccess = async () => {
+				const result = getRequest.result as DBItemEncryptedBase64 | DBItem | null;
+				if (!result) {
+					return resolve(null);
+				} else {
+					if (this.encryptKey) {
+						try {
+							const decryptedData = await this.decryptData(result as DBItemEncryptedBase64);
+							return resolve(decryptedData);
+						} catch (error) {
+							if (this.clearOnDecryptError) {
+								if (this.printLogs) {
+									console.error(`LocalSave | Failed to get data since decryption failed`, error);
 								}
-								return reject(null);
-							} else {
-								return resolve(JSON.parse(decryptedData.data as string) as DBItem);
+								this.clear(category);
+								throw error;
 							}
-						} else {
-							return resolve(result as DBItem);
 						}
+					} else {
+						return resolve(result as DBItem);
 					}
-				};
-				getRequest.onerror = () => {
-					return reject(getRequest.error);
-				};
-			});
+				}
+			};
+			getRequest.onerror = () => {
+				return reject(getRequest.error);
+			};
 		});
 	}
 
 	/**
 	 * Removes an entry from the specified category and the specific itemKey in the IndexedDB store.
 	 *
-	 * @param {Category} category - The category from which the item should be removed.
-	 * @param {IDBValidKey} itemKey - The key of the item to be removed.
-	 * @returns {Promise<OperationReturnData>} A promise that resolves to an object with the following properties:
-	 * - `success`: A boolean indicating whether the operation was successful.
-	 * - `error`: An Error object, if the operation failed.
+	 * @param category The category from which the item should be removed.
+	 * @param itemKey The key of the item to be removed.
+	 *
+	 * @returns A promise that resolves to `true` if the operation was successful.
+	 *
+	 * @throws {Error} Will reject the promise if an error occurs during the removal process.
 	 */
-	async remove(category: Category, itemKey: IDBValidKey): Promise<OperationReturnData> {
-		return new Promise((resolve, reject) => {
+	async remove(category: Category, itemKey: IDBValidKey) {
+		return new Promise<true>((resolve, reject) => {
 			this.getStore(category, "readwrite").then((store) => {
 				const deleteRequest = store.delete(itemKey);
 				deleteRequest.onsuccess = () => {
-					return resolve({ success: true });
+					return resolve(true);
 				};
 				deleteRequest.onerror = () => {
-					return reject({ success: false, error: deleteRequest.error });
+					return reject(deleteRequest.error);
 				};
 			});
 		});
@@ -268,19 +366,20 @@ class LocalSave {
 	 * Clears all entries in the specified category.
 	 *
 	 * @param category - The category to clear.
-	 * @returns {Promise<OperationReturnData>} A promise that resolves to an object with the following properties:
-	 * - `success`: A boolean indicating whether the operation was successful.
-	 * - `error`: An Error object, if the operation failed.
+	 *
+	 * @returns A promise that resolves to `true` if the operation was successful.
+	 *
+	 * @throws {Error} Will reject the promise if an error occurs during the clearing process.
 	 */
-	async clear(category: Category): Promise<OperationReturnData> {
-		return new Promise((resolve, reject) => {
+	async clear(category: Category) {
+		return new Promise<true>((resolve, reject) => {
 			this.getStore(category, "readwrite").then((store) => {
 				const clearRequest = store.clear();
 				clearRequest.onsuccess = () => {
-					return resolve({ success: true });
+					return resolve(true);
 				};
 				clearRequest.onerror = () => {
-					return reject({ success: false, error: clearRequest.error });
+					return reject(clearRequest.error);
 				};
 			});
 		});
@@ -292,15 +391,14 @@ class LocalSave {
 	 * This method iterates through all categories and removes items that have a timestamp
 	 * older than the specified number of days from the current date.
 	 *
-	 * @param {number} [days=this.expiryThreshold] - The number of days to use as the threshold for expiring data.
+	 * @param {number} [days=this.expiryThreshold] The number of days to use as the threshold for expiring data.
 	 * Defaults to expiryThreshold from config if not provided.
-	 * @returns {Promise<OperationReturnData>} A promise that resolves to an object with the following properties:
-	 * - `success`: A boolean indicating whether the operation was successful.
-	 * - `error`: An Error object, if the operation failed.
+	 *
+	 * @returns A promise that resolves to `true` if the operation was successful.
 	 *
 	 * @throws {Error} - Throws an error if there is an issue accessing the store or removing items.
 	 */
-	async expire(days: number = this.expiryThreshold): Promise<OperationReturnData> {
+	async expire(days: number = this.expiryThreshold): Promise<true> {
 		const checkDate = Date.now() - days * 86400000;
 		for (const category of this.categories) {
 			const store = await this.getStore(category);
@@ -317,46 +415,51 @@ class LocalSave {
 				for (const key of keys) {
 					const item = await this.get(category, key);
 					if (item && item.timestamp < checkDate) {
+						if (this.printLogs) {
+							console.debug(
+								`LocalSave | Removing expired data [category:${category} / key:${key} / timestamp:${item.timestamp}]`
+							);
+						}
 						await this.remove(category, key);
 					}
 				}
 			} catch (error) {
 				if (this.printLogs) {
-					console.error(`Error expiring data older than '${days}' days`, error);
+					console.error(`LocalSave | Expiring data older than '${days}' days failed`, error);
 				}
-				return { success: false, error };
+				throw error;
 			}
 		}
-		return { success: true };
+		return true;
 	}
 
 	/**
 	 * Asynchronously destroys the database by deleting it from IndexedDB.
 	 *
-	 * @returns {Promise<OperationReturnData>} A promise that resolves to an object with the following properties:
-	 * - `success`: A boolean indicating whether the operation was successful.
-	 * - `error`: An Error object, if the operation failed.
+	 * @returns A promise that resolves to `true` if the operation was successful.
+	 *
+	 * @throws {Error} Will reject the promise if an error occurs during the deletion process.
 	 */
-	async destroy(): Promise<OperationReturnData> {
-		return new Promise<OperationReturnData>((resolve, reject) => {
+	async destroy() {
+		return new Promise<true>((resolve, reject) => {
 			const deleteRequest = indexedDB.deleteDatabase(this.dbName);
-			deleteRequest.onsuccess = () => resolve({ success: true });
-			deleteRequest.onerror = () =>
-				reject({
-					success: false,
-					error: deleteRequest.error,
-				});
+			deleteRequest.onsuccess = () => resolve(true);
+			deleteRequest.onerror = () => reject(deleteRequest.error);
 		});
 	}
 }
 export type DBName = string;
-export type EncryptKey = CryptoJS.lib.WordArray | string;
+export type EncryptKey = string;
 export type Category = string;
 export type DBItem = {
 	timestamp: number;
 	data: unknown;
 };
-export type DBItemEncrypted = CryptoJS.lib.WordArray | string;
+export type DBItemEncrypted = {
+	iv: number[];
+	data: ArrayBuffer;
+};
+export type DBItemEncryptedBase64 = string;
 export interface OperationReturnData {
 	/**
 	 * If the operation was successful
@@ -381,7 +484,7 @@ export interface Config {
 	/**
 	 * The key to use for encrypting and decrypting data
 	 * Not providing this will store data in plain text
-	 * No spaces are allowed in the key
+	 * Should be a string without spaces of length 16, 24, or 32 characters
 	 *
 	 * @default undefined
 	 */
