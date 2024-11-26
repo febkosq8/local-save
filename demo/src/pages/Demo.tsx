@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import LocalSave from "@febkosq8/local-save";
 import Input from "@feb/components/ui/Input";
 import { useState } from "react";
+import TextArea from "@feb/components/ui/TextArea";
 const categories = ["userData", "userSettings"];
 export default function Demo() {
 	const [category, setCategory] = useState();
@@ -23,7 +24,6 @@ export default function Demo() {
 					<TextArea
 						className="w-full"
 						required
-						as="textarea"
 						value={userData ?? ""}
 						onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
 							setUserData((curr) => {
