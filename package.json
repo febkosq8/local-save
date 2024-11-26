@@ -28,7 +28,7 @@
     ],
     "author": "Febkosq8",
     "license": "ISC",
-    "description": "Utilize IndexedDB to store data locally and securely using AES-GCM encryption.",
+    "description": "Lightweight wrapper around IndexedDB for secure and structured client-side data storage.",
     "devDependencies": {
         "@eslint/js": "^9.15.0",
         "@testing-library/jest-dom": "^6.6.3",
