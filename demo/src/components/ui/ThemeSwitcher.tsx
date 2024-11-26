@@ -9,11 +9,13 @@ export default function ThemeSwitcher() {
 	const colorModeIcon = { light: faSun, dark: faMoon, system: faLaptop };
 	const localStorageString = `theme`;
 	useEffect(() => {
-		if (!(localStorageString in localStorage)) {
+		if (typeof window !== "undefined" && !(localStorageString in localStorage)) {
 			localStorage.setItem(localStorageString, "system");
 		}
 	}, []);
-	const [colorMode, setColorMode] = useState<Color>((localStorage.getItem(localStorageString) as Color) ?? "system");
+	const [colorMode, setColorMode] = useState<Color>(
+		typeof window !== "undefined" ? ((localStorage.getItem(localStorageString) as Color) ?? "system") : "system",
+	);
 	useEffect(() => {
 		if (["light", "dark"].includes(colorMode)) {
 			if (colorMode === "dark") {

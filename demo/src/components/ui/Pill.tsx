@@ -1,6 +1,6 @@
 import { cx } from "@rinzai/zen";
 import { forwardRef, ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 interface PillProps {
 	as?: React.ElementType;
@@ -20,7 +20,7 @@ const Pill = forwardRef<any, PillProps>(({ as, children, active, className, href
 				`p-3  text-xl  font-bold ${
 					active ? "bg-blue-600 text-white" : "text-stone-400"
 				} hover:bg-blue-900 hover:text-white`,
-				className
+				className,
 			)}
 			ref={ref}
 			{...props}

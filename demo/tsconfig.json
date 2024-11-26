@@ -24,6 +24,6 @@
 			"@feb/*": ["src/*"]
 		}
 	},
-	"include": ["src"],
+	"exclude": ["node_modules", "dist", "build", "coverage"],
 	"references": [{ "path": "./tsconfig.node.json" }]
 }
