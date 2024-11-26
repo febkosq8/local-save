@@ -113,6 +113,7 @@ await localSave.destroy();
 ### Decrypting data manually
 
 Decrypt data using the encryption key
+
 This is useful when you want to decrypt the `DBItemEncryptedBase64` string manually without using the `get` method
 
 ```typescript
