@@ -13,8 +13,8 @@
     "scripts": {
         "build": "tsup",
         "lint": "eslint .",
+        "prettier": "prettier --write .",
         "lint-fix": "eslint . --fix",
-        "type-check": "tsc --noEmit",
         "push-npm": "tsup && npm publish --access public"
     },
     "keywords": [
