@@ -44,17 +44,19 @@ Create a new instance of `LocalSave` with the available configuration options
 ```typescript
 import LocalSave from "@febkosq8/local-save";
 ...
-const lsConfig = {
-  encryptionKey: "MyEncryptionKeyThatIs32CharsLong", // Encryption key for data
+const localSaveConfig = {
+  encryptionKey: "MyRandEncryptKeyThatIs32CharLong", // Encryption key for data
   categories: ["userData", "settings"], // Define categories for data storage
   expiryThreshold: 14, // Clear data older than 14 days
 };
-const localSave = new LocalSave(lsConfig);
+const localSave = new LocalSave(localSaveConfig);
 ```
 
 ### Storing data
 
-Set data in a category
+Store data in a category
+
+_Here `userData` is the category. The key is `user001` for the data `{ name: "John Doe", age: 30 }`._
 
 ```typescript
 await localSave.set('userData', 'user001', { name: 'John Doe', age: 30 });
@@ -62,7 +64,9 @@ await localSave.set('userData', 'user001', { name: 'John Doe', age: 30 });
 
 ### Fetching data
 
-Get data from a category
+Fetch data from a category using the `category` and `key`
+
+_The data will be returned along with the timestamp when it was stored. If the data is expired, it will return `null`._
 
 ```typescript
 try {
@@ -72,13 +76,14 @@ try {
     console.log(timestamp); // UNIX timestamp of calling `set` method
     //handle data here
 } catch (error) {
+    //Error will be thrown if the decryption fails
     //handle error here
 }
 ```
 
 ### Removing data
 
-Remove data from a category
+Remove data using the `category` and `key`
 
 ```typescript
 await localSave.remove('userData', 'user001');
@@ -86,7 +91,7 @@ await localSave.remove('userData', 'user001');
 
 ### Clearing a category
 
-Clear all data from a category
+Clear all data from a `category`
 
 ```typescript
 await localSave.clear('userData');
