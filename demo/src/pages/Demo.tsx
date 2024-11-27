@@ -150,7 +150,7 @@ export default function Demo() {
 					<div className="flex justify-center gap-2 w-full">
 						<Button
 							className="w-fit"
-							onClick={async () => {
+							onClick={() => {
 								setLocalSaveConfig((curr) => {
 									curr.encryptionKey = "undefined";
 									return structuredClone(curr);
@@ -162,7 +162,7 @@ export default function Demo() {
 						</Button>
 						<Button
 							className="w-fit"
-							onClick={async () => {
+							onClick={() => {
 								setLocalSaveConfig((curr) => {
 									curr.encryptionKey = Array.from({ length: 32 }, () => Math.floor(Math.random() * 36).toString(36))
 										.join("")
