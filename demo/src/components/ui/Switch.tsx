@@ -7,7 +7,7 @@ interface SwitchProps {
 	onChange?: (checked: boolean) => void;
 	disabled?: boolean;
 	variant?: "primary" | "danger" | "success";
-	children: (checked: boolean) => JSX.Element;
+	children?: (checked: boolean) => JSX.Element;
 }
 const Switch = ({
 	checked = false,
@@ -33,9 +33,9 @@ const Switch = ({
 						icon={faCircle}
 						className={cx(
 							`absolute top-1/2 transform -translate-y-1/2 `,
-							checked ? "left-6 text-gray-400 dark:text-gray-200" : "left-1 text-blue-600",
+							checked ? "left-6 text-blue-600" : "left-1 text-blue-600",
 							disabled && "text-gray-400 dark:text-gray-200",
-							`inline-block h-4 w-4 rounded-full border border-blue-500 [transition:_all_0.5s_cubic-bezier(1,0,0,1)]`
+							`inline-block h-4 w-4 rounded-full border border-blue-500 [transition:_all_0.5s_cubic-bezier(1,0,0,1)]`,
 						)}
 					/>
 				</div>
@@ -51,7 +51,7 @@ const SwitchVariants = cva("relative inline-flex h-6 w-11 items-center rounded-f
 			primary: "",
 		},
 		checked: {
-			true: "",
+			true: "bg-gray-400 dark:bg-gray-200",
 			false: "bg-gray-400 dark:bg-gray-200",
 		},
 		disabled: {

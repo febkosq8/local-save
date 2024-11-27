@@ -1,5 +1,6 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import "./index.css";
+import "@rinzai/zen/dist/style.css";
 export function Layout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en">
