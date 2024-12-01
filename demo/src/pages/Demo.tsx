@@ -183,7 +183,7 @@ export default function Demo() {
 				<h4 className="font-bold text-center w-full">
 					Type some text below
 					<TextArea
-						className="w-full"
+						className="w-full text-base"
 						required
 						value={userData ?? ""}
 						onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
