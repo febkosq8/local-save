@@ -4,7 +4,7 @@ import { Switch } from "@feb/components/ui/Switch";
 import TextArea from "@feb/components/ui/TextArea";
 import LocalSave from "@febkosq8/local-save";
 import { cx, Dropdown } from "@rinzai/zen";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 export default function Demo() {
 	const [localSaveConfig, setLocalSaveConfig] = useState({
@@ -19,19 +19,8 @@ export default function Demo() {
 	const [category, setCategory] = useState("userData");
 	const [itemKey, setItemKey] = useState("test");
 	const [userData, setUserData] = useState<string>();
-	useEffect(() => {
-		if (!userData) return;
-		const timeout = setTimeout(() => {
-			toast.promise(localSave.set(category, itemKey, userData), {
-				loading: `Saving ${itemKey} to ${category}`,
-				success: `Saved ${itemKey} to ${category}`,
-				error: `Failed to save ${itemKey} to ${category}`,
-			});
-		}, 1000);
-		return () => {
-			clearTimeout(timeout);
-		};
-	}, [userData]);
+	const timeoutRef = useRef<NodeJS.Timeout>();
+
 	return (
 		<div className="flex flex-col items-center w-full p-5 gap-4">
 			<div className="flex flex-col justify-start gap-2 px-2 border border-border rounded ">
@@ -202,6 +191,14 @@ export default function Demo() {
 								curr = e.target.value;
 								return structuredClone(curr);
 							});
+							if (timeoutRef.current) clearTimeout(timeoutRef.current);
+							timeoutRef.current = setTimeout(() => {
+								toast.promise(localSave.set(category, itemKey, userData), {
+									loading: `Saving ${itemKey} to ${category}`,
+									success: `Saved ${itemKey} to ${category}`,
+									error: `Failed to save ${itemKey} to ${category}`,
+								});
+							}, 1000);
 						}}
 						placeholder={"Type some text into here"}
 					/>

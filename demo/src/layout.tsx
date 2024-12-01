@@ -6,7 +6,7 @@ function App() {
 		<div className="text-slate-600 dark:text-slate-100 bg-background">
 			<Header />
 			<Outlet />
-			<Toaster />
+			<Toaster richColors />
 		</div>
 	);
 }
