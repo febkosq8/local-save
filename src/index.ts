@@ -358,9 +358,7 @@ class LocalSave {
                         timestamp: result.timestamp,
                     });
                 }
-                Object.defineProperty(result, 'toJSON', {
-                    value: () => result.data,
-                });
+                Object.setPrototypeOf(result, { toJSON: () => result.data });
                 return resolve(result);
             };
             getRequest.onerror = () => {
