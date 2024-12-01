@@ -1,5 +1,4 @@
 import Logo from "@feb/assets/logo.png";
-import LinkPill from "@feb/components/ui/LinkPill";
 import ThemeSwitcher from "@feb/components/ui/ThemeSwitcher";
 import { Link } from "react-router";
 
@@ -10,7 +9,6 @@ export default function Header() {
 				<img src={Logo} width={180} alt={"local-save"} />
 			</Link>
 			<div className="flex items-center gap-4">
-				<LinkPill href="/">Demo</LinkPill>
 				<ThemeSwitcher />
 			</div>
 		</div>
