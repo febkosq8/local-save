@@ -47,44 +47,36 @@
 		--input: 12 6.5% 15.1%;
 		--ring: 20.5 90.2% 48.2%;
 	}
-}
-
-@layer base {
-	* {
-		@apply border-border;
-	}
-	body {
-		@apply bg-background text-foreground;
-	}
-}
-
-@layer components {
-	.typography-heading-1 {
+	h1 {
 		@apply scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl;
 	}
-	.typography-heading-2 {
-		@apply scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight transition-colors first:mt-0;
+	h2 {
+		@apply scroll-m-20 text-3xl font-semibold tracking-tight first:mt-0;
 	}
-	.typography-heading-3 {
+	h3 {
 		@apply scroll-m-20 text-2xl font-semibold tracking-tight;
 	}
-	.typography-heading-4 {
+	h4 {
 		@apply scroll-m-20 text-xl font-semibold tracking-tight;
 	}
-	.typography-paragraph {
-		@apply leading-7 [&:not(:first-child)]:mt-6;
+	h5 {
+		@apply scroll-m-20 text-lg font-semibold tracking-tight;
 	}
-	.typography-lead {
-		@apply text-xl text-muted-foreground;
+	h6 {
+		@apply scroll-m-20 text-base font-semibold tracking-tight;
 	}
-	.typography-large {
-		@apply text-lg font-semibold;
+	p {
+		@apply leading-7  [&:not(:first-child)]:mt-6;
 	}
-	.typography-small {
-		@apply text-sm font-medium leading-none;
+	blockquote {
+		@apply mt-6 border-l-2 pl-6 italic;
 	}
-	.typography-muted {
-		@apply text-sm text-muted-foreground;
+	code,
+	pre {
+		@apply relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold text-muted-foreground;
+	}
+	label {
+		@apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex flex-col gap-2;
 	}
 }
 

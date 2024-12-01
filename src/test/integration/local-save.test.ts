@@ -1,5 +1,5 @@
-import LocalSave from '@local-save/index';
-import Logger from '@local-save/utils/logger';
+import LocalSave from 'src/index';
+import Logger from 'src/utils/logger';
 
 describe('LocalSave', () => {
     it('should log a warning if the encryption key is invalid', () => {

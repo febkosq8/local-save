@@ -4,7 +4,8 @@ import { Switch } from "@feb/components/ui/Switch";
 import TextArea from "@feb/components/ui/TextArea";
 import LocalSave from "@febkosq8/local-save";
 import { cx, Dropdown } from "@rinzai/zen";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 export default function Demo() {
 	const [localSaveConfig, setLocalSaveConfig] = useState({
 		dbName: "LocalSave",
@@ -14,47 +15,30 @@ export default function Demo() {
 		clearOnDecryptError: false,
 		printLogs: false,
 	});
-	const localSave = new LocalSave(localSaveConfig);
+	const localSave = useMemo(() => new LocalSave(localSaveConfig), [localSaveConfig]);
 	const [category, setCategory] = useState("userData");
 	const [itemKey, setItemKey] = useState("test");
 	const [userData, setUserData] = useState<string>();
-	const [timestamp, setTimestamp] = useState<string>();
-	const [error, setError] = useState<string>();
-	async function saveData(data: string) {
-		try {
-			const saveSuccess = await localSave.set(category, itemKey, data);
-			console.log({ saveSuccess });
-		} catch (error) {
-			console.log("Failed saveData", { error });
-		}
-	}
-	async function getTestData() {
-		try {
-			const storedDataFetch = await localSave.get(category, itemKey);
-			console.log({ storedDataFetch });
-			if (storedDataFetch) {
-				setError(undefined);
-				setUserData(storedDataFetch.data as string);
-				setTimestamp(`Date recovered from '${new Date(storedDataFetch.timestamp).toUTCString()}'`);
-			} else {
-				setError("No data found in current LocalSave category with that key");
-				setUserData("");
-				setTimestamp(undefined);
-			}
-		} catch (e) {
-			setError("Data is encrypted, please provide the correct key");
-			setUserData("");
-			setTimestamp(undefined);
-			console.error(e);
-		}
-	}
+	useEffect(() => {
+		if (!userData) return;
+		const timeout = setTimeout(() => {
+			toast.promise(localSave.set(category, itemKey, userData), {
+				loading: `Saving ${itemKey} to ${category}`,
+				success: `Saved ${itemKey} to ${category}`,
+				error: `Failed to save ${itemKey} to ${category}`,
+			});
+		}, 1000);
+		return () => {
+			clearTimeout(timeout);
+		};
+	}, [userData]);
 	return (
-		<div className="flex w-full p-5">
-			<div className="flex flex-col items-center justify-start w-4/12 gap-2 px-2">
-				<label className="font-bold text-xl text-center underline underline-offset-2">Config</label>
+		<div className="flex flex-col items-center w-full p-5 gap-4">
+			<div className="flex flex-col justify-start gap-2 px-2 border border-border rounded ">
+				<h4 className="text-center">Config</h4>
 				<div className="flex gap-2 w-full">
-					<div className="flex flex-col gap-1 items-start justify-center w-full">
-						<label className="text-xl">Database name</label>
+					<label className="w-full">
+						Database name
 						<Input
 							type="text"
 							className="w-full"
@@ -67,9 +51,9 @@ export default function Demo() {
 								});
 							}}
 						/>
-					</div>
-					<div className="flex flex-col gap-1 items-start justify-center w-full">
-						<label className="text-xl">Category</label>
+					</label>
+					<label className="w-full">
+						Category
 						<Dropdown
 							className={cx(
 								"!w-full",
@@ -85,11 +69,11 @@ export default function Demo() {
 								setCategory(e.key);
 							}}
 						/>
-					</div>
+					</label>
 				</div>
 				<div className="flex gap-2 w-full">
-					<div className="flex flex-col gap-1 items-start justify-center w-full">
-						<label className="text-xl">Item key</label>
+					<label className="w-full">
+						Item key
 						<Input
 							type="text"
 							className="w-full"
@@ -99,9 +83,9 @@ export default function Demo() {
 								setItemKey(e.target.value);
 							}}
 						/>
-					</div>
-					<div className="flex flex-col gap-1 items-start justify-center w-full">
-						<label className="text-xl">Expiry threshold</label>
+					</label>
+					<label className="w-full">
+						Expiry threshold
 						<Input
 							type="number"
 							className="w-full"
@@ -115,19 +99,19 @@ export default function Demo() {
 								});
 							}}
 						/>
-					</div>
+					</label>
 				</div>
-				<div className="flex flex-col gap-1 items-start justify-center w-full">
-					<label
-						className={cx(
-							"text-xl",
-							localSaveConfig.encryptionKey?.length > 0
-								? [16, 24, 32].includes(localSaveConfig.encryptionKey?.length)
-									? "text-green-500"
-									: "text-red-800"
-								: "",
-						)}
-					>{`Encryption key (${localSaveConfig.encryptionKey?.length ?? 0} length)`}</label>
+				<label
+					className={cx(
+						"w-full",
+						localSaveConfig.encryptionKey?.length > 0
+							? [16, 24, 32].includes(localSaveConfig.encryptionKey?.length)
+								? "text-green-500"
+								: "text-red-800"
+							: "",
+					)}
+				>
+					{`Encryption key (${localSaveConfig.encryptionKey?.length ?? 0} length)`}
 					<Input
 						type="text"
 						className={cx(
@@ -147,45 +131,42 @@ export default function Demo() {
 							});
 						}}
 					/>
-					<div className="flex justify-center gap-2 w-full">
-						<Button
-							className="w-fit"
-							onClick={() => {
-								setLocalSaveConfig((curr) => {
-									curr.encryptionKey = "undefined";
-									return structuredClone(curr);
-								});
-							}}
-							variant={"destructive"}
-						>
-							Clear current key
-						</Button>
-						<Button
-							className="w-fit"
-							onClick={() => {
-								setLocalSaveConfig((curr) => {
-									curr.encryptionKey = Array.from({ length: 32 }, () => Math.floor(Math.random() * 36).toString(36))
-										.join("")
-										.toUpperCase();
-									return structuredClone(curr);
-								});
-							}}
-						>
-							Generate random 32 char key
-						</Button>
-						<Button
-							className="w-fit"
-							onClick={async () => {
-								await navigator.clipboard.writeText(localSaveConfig.encryptionKey);
-							}}
-							variant={"secondary"}
-						>
-							Copy key to clipboard
-						</Button>
-					</div>
+				</label>
+				<div className="flex justify-between gap-2 w-full">
+					<Button
+						onClick={() => {
+							setLocalSaveConfig((curr) => {
+								curr.encryptionKey = "undefined";
+								return structuredClone(curr);
+							});
+						}}
+						variant={"destructive"}
+					>
+						Clear current key
+					</Button>
+					<Button
+						onClick={() => {
+							setLocalSaveConfig((curr) => {
+								curr.encryptionKey = Array.from({ length: 32 }, () => Math.floor(Math.random() * 36).toString(36))
+									.join("")
+									.toUpperCase();
+								return structuredClone(curr);
+							});
+						}}
+					>
+						Generate random 32 char key
+					</Button>
+					<Button
+						onClick={async () => {
+							await navigator.clipboard.writeText(localSaveConfig.encryptionKey);
+						}}
+						variant={"secondary"}
+					>
+						Copy key to clipboard
+					</Button>
 				</div>
-				<div className="flex gap-1 items-center justify-items-end w-full">
-					<label className="text-xl">Print logs</label>
+				<label className="inline-flex flex-row items-center justify-start">
+					Print logs
 					<Switch
 						checked={localSaveConfig.printLogs}
 						onChange={(e) => {
@@ -195,9 +176,9 @@ export default function Demo() {
 							});
 						}}
 					/>
-				</div>
-				<div className="flex gap-1 items-center justify-items-end w-full">
-					<label className="text-xl">Clear storage on decrypt error</label>
+				</label>
+				<label className="inline-flex flex-row items-center justify-start">
+					Clear storage on decrypt error
 					<Switch
 						checked={localSaveConfig.clearOnDecryptError}
 						onChange={(e) => {
@@ -207,76 +188,92 @@ export default function Demo() {
 							});
 						}}
 					/>
-				</div>
+				</label>
 			</div>
-			<div className="flex flex-col gap-2 items-center justify-start w-5/12">
-				<label className="font-bold text-xl text-center underline underline-offset-2">Type some text below</label>
-				<div className="flex flex-col items-center justify-center w-full px-2">
-					<label className="text-xl text-red-500">{error}</label>
-					<label className="text-xl text-green-500">{timestamp}</label>
+			<div className="flex flex-col justify-start gap-2 px-2 border border-border rounded ">
+				<h4 className="font-bold text-center w-full">
+					Type some text below
 					<TextArea
 						className="w-full"
 						required
 						value={userData ?? ""}
-						onChange={async (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+						onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
 							setUserData((curr) => {
 								curr = e.target.value;
 								return structuredClone(curr);
 							});
-							await saveData(e.target.value);
 						}}
 						placeholder={"Type some text into here"}
 					/>
-				</div>
+				</h4>
 			</div>
-			<div className="flex flex-col gap-2 items-center justify-start w-3/12">
-				<label className="font-bold text-xl text-center underline underline-offset-2">Actions</label>
-				<Button
-					className="w-3/4"
-					onClick={async () => {
-						await getTestData();
-					}}
-				>
-					Pull from LocalSave
-				</Button>
-				<Button
-					className="w-3/4"
-					onClick={async () => {
-						const action = await localSave.remove(category, itemKey);
-						console.log({ action });
-					}}
-				>
-					Remove Current Key from Category
-				</Button>
-				<Button
-					className="w-3/4"
-					onClick={async () => {
-						const action = await localSave.clear(category);
-						console.log({ action });
-					}}
-				>
-					Clear the category
-				</Button>
-				<Button
-					className="w-3/4"
-					onClick={async () => {
-						const action = await localSave.destroy();
-						console.log({ action });
-					}}
-					variant={"destructive"}
-				>
-					Destroy
-				</Button>
-				<Button
-					className="w-3/4"
-					onClick={async () => {
-						const action = await localSave.expire(localSaveConfig.expiryThreshold);
-						console.log({ action });
-					}}
-					variant={"destructive"}
-				>
-					{`Expire data older than ${localSaveConfig.expiryThreshold} days`}
-				</Button>
+			<div className="flex flex-col gap-2 items-center justify-start ">
+				<label className="font-bold text-xl text-center">Actions</label>
+				<div className="flex gap-2 items-center">
+					<Button
+						onClick={() => {
+							toast.promise(localSave.get(category, itemKey), {
+								loading: `Fetching ${itemKey} from ${category}`,
+								success: (data) => {
+									setUserData(data?.data as string);
+									return `Data recovered from '${new Date(data?.timestamp ?? "").toUTCString()}`;
+								},
+								error: () => {
+									setUserData("");
+									return "No data found in current LocalSave category with that key";
+								},
+							});
+						}}
+					>
+						Pull from LocalSave
+					</Button>
+					<Button
+						onClick={() => {
+							toast.promise(localSave.remove(category, itemKey), {
+								loading: `Removing ${itemKey} from ${category}`,
+								success: `Removed ${itemKey} from ${category}`,
+								error: `Failed to remove ${itemKey} from ${category}`,
+							});
+						}}
+					>
+						Remove Current Key from Category
+					</Button>
+					<Button
+						onClick={() => {
+							toast.promise(localSave.clear(category), {
+								loading: `Clearing ${category}`,
+								success: `Cleared ${category}`,
+								error: `Failed to clear ${category}`,
+							});
+						}}
+					>
+						Clear the category
+					</Button>
+					<Button
+						onClick={() => {
+							toast.promise(localSave.destroy(), {
+								loading: "Destroying LocalSave",
+								success: "Destroyed LocalSave",
+								error: "Failed to destroy LocalSave",
+							});
+						}}
+						variant={"destructive"}
+					>
+						Destroy
+					</Button>
+					<Button
+						onClick={() => {
+							toast.promise(localSave.expire(localSaveConfig.expiryThreshold), {
+								loading: `Expiring data older than ${localSaveConfig.expiryThreshold} days`,
+								success: `Expired data older than ${localSaveConfig.expiryThreshold} days`,
+								error: `Failed to expire data older than ${localSaveConfig.expiryThreshold} days`,
+							});
+						}}
+						variant={"destructive"}
+					>
+						{`Expire data older than ${localSaveConfig.expiryThreshold} days`}
+					</Button>
+				</div>
 			</div>
 		</div>
 	);
