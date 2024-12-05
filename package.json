@@ -15,7 +15,8 @@
         "lint": "eslint .",
         "prettier": "prettier --write .",
         "lint-fix": "eslint . --fix",
-        "push-npm": "tsup && npm publish --access public"
+        "push-npm": "tsup && npm publish --access public",
+        "test": "vitest"
     },
     "keywords": [
         "IndexedDB",
