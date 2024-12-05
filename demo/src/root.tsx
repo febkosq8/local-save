@@ -29,7 +29,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				<Meta />
 				<Links />
 			</head>
-			<body className="bg-background text-foreground">
+			<body className="bg-background text-foreground min-w-[345px]">
 				{children}
 				<ScrollRestoration />
 				<Scripts />
