@@ -2,9 +2,11 @@ import { Button } from "@feb/components/ui/Button";
 import Input from "@feb/components/ui/Input";
 import { Switch } from "@feb/components/ui/Switch";
 import TextArea from "@feb/components/ui/TextArea";
+import { faGithub, faNpm } from "@fortawesome/free-brands-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import LocalSave from "@febkosq8/local-save";
 import { cx, Dropdown } from "@rinzai/zen";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 export default function Demo() {
 	const [localSaveConfig, setLocalSaveConfig] = useState({
@@ -19,6 +21,7 @@ export default function Demo() {
 	const [category, setCategory] = useState("userData");
 	const [itemKey, setItemKey] = useState("test");
 	const [userData, setUserData] = useState<string>();
+	const timeoutRef = useRef<NodeJS.Timeout>();
 
 	return (
 		<div className="flex flex-col  w-full p-5 gap-4">
@@ -193,6 +196,10 @@ export default function Demo() {
 								curr = e.target.value;
 								return structuredClone(curr);
 							});
+							if (timeoutRef.current) clearTimeout(timeoutRef.current);
+							timeoutRef.current = setTimeout(() => {
+								toast.info("Try any of the actions from below", { duration: 3500, closeButton: true });
+							}, 1500);
 						}}
 						placeholder={"Type some text into here"}
 					/>
@@ -200,9 +207,11 @@ export default function Demo() {
 						<Button
 							onClick={() => {
 								toast.promise(localSave.set(category, itemKey, userData), {
-									loading: `Saving ${itemKey} to ${category}`,
-									success: `Saved ${itemKey} to ${category}`,
-									error: `Failed to save ${itemKey} to ${category}`,
+									loading: `Saving data under '${itemKey}' to '${category}'`,
+									success: `Saved data under '${itemKey}' to '${category}'`,
+									error: `Failed to save data under '${itemKey}' to '${category}'`,
+									duration: 3500,
+									closeButton: true,
 								});
 							}}
 						>
@@ -211,14 +220,14 @@ export default function Demo() {
 						<Button
 							onClick={() => {
 								toast.promise(localSave.get(category, itemKey), {
-									loading: `Fetching ${itemKey} from ${category}`,
+									loading: `Fetching data under '${itemKey}' from ${category}`,
 									success: (data) => {
 										setUserData(data?.data as string);
 										return `Data recovered from '${new Date(data?.timestamp ?? "").toUTCString()}`;
 									},
 									error: () => {
 										setUserData("");
-										return "No data found in current LocalSave category with that key";
+										return "No data found with that key in current LocalSave category";
 									},
 								});
 							}}
@@ -228,9 +237,9 @@ export default function Demo() {
 						<Button
 							onClick={() => {
 								toast.promise(localSave.remove(category, itemKey), {
-									loading: `Removing ${itemKey} from ${category}`,
-									success: `Removed ${itemKey} from ${category}`,
-									error: `Failed to remove ${itemKey} from ${category}`,
+									loading: `Removing data under '${itemKey}' from '${category}'`,
+									success: `Removed data under '${itemKey}' from '${category}'`,
+									error: `Failed to remove data under '${itemKey}' from '${category}'`,
 								});
 							}}
 							variant={"destructive"}
@@ -275,6 +284,30 @@ export default function Demo() {
 						</Button>
 					</div>
 				</div>
+			</div>
+			<div className="text-lg items-center justify-center flex gap-2">
+				<a
+					href={"https://github.com/febkosq8/local-save"}
+					target="_blank"
+					rel="noopener noreferrer"
+					title={"View on GitHub"}
+				>
+					<Button className="gap-1 items-center justify-center flex" variant={"outline"}>
+						View the source code on
+						<FontAwesomeIcon icon={faGithub} size="xl" />
+					</Button>
+				</a>
+				<a
+					href={"https://www.npmjs.com/package/@febkosq8/local-save"}
+					target="_blank"
+					rel="noopener noreferrer"
+					title={"View on NPM"}
+				>
+					<Button className="gap-1 items-center justify-center flex" variant={"outline"}>
+						Download from
+						<FontAwesomeIcon icon={faNpm} size="xl" />
+					</Button>
+				</a>
 			</div>
 		</div>
 	);

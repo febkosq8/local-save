@@ -8,6 +8,7 @@ export default function Header() {
 			<Link to="/" className="font-bold">
 				<img src={Logo} width={180} alt={"local-save"} />
 			</Link>
+
 			<div className="flex items-center gap-4">
 				<ThemeSwitcher />
 			</div>

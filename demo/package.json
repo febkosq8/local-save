@@ -21,8 +21,8 @@
 		"@radix-ui/react-label": "2.1.0",
 		"@radix-ui/react-slot": "1.1.0",
 		"@radix-ui/react-switch": "1.1.1",
-		"@react-router/node": "^7.0.1",
-		"@react-router/serve": "^7.0.1",
+		"@react-router/node": "7.0.1",
+		"@react-router/serve": "7.0.1",
 		"@rinzai/zen": "0.0.16",
 		"axios": "1.7.8",
 		"class-variance-authority": "0.7.1",
@@ -30,8 +30,8 @@
 		"isbot": "^5",
 		"react": "18.3.1",
 		"react-dom": "18.3.1",
-		"react-router": "^7.0.1",
-		"sonner": "^1.7.0",
+		"react-router": "7.0.1",
+		"sonner": "1.7.0",
 		"tailwind-merge": "2.5.5"
 	},
 	"devDependencies": {
