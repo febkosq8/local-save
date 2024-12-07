@@ -4,7 +4,7 @@ import { Switch } from "@feb/components/ui/Switch";
 import TextArea from "@feb/components/ui/TextArea";
 import LocalSave from "@febkosq8/local-save";
 import { cx, Dropdown } from "@rinzai/zen";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 export default function Demo() {
 	const [localSaveConfig, setLocalSaveConfig] = useState({
@@ -19,7 +19,6 @@ export default function Demo() {
 	const [category, setCategory] = useState("userData");
 	const [itemKey, setItemKey] = useState("test");
 	const [userData, setUserData] = useState<string>();
-	const timeoutRef = useRef<NodeJS.Timeout>();
 
 	return (
 		<div className="flex flex-col  w-full p-5 gap-4">
@@ -194,18 +193,21 @@ export default function Demo() {
 								curr = e.target.value;
 								return structuredClone(curr);
 							});
-							if (timeoutRef.current) clearTimeout(timeoutRef.current);
-							timeoutRef.current = setTimeout(() => {
+						}}
+						placeholder={"Type some text into here"}
+					/>
+					<div className="flex gap-2 flex-col md:flex-row">
+						<Button
+							onClick={() => {
 								toast.promise(localSave.set(category, itemKey, userData), {
 									loading: `Saving ${itemKey} to ${category}`,
 									success: `Saved ${itemKey} to ${category}`,
 									error: `Failed to save ${itemKey} to ${category}`,
 								});
-							}, 1000);
-						}}
-						placeholder={"Type some text into here"}
-					/>
-					<div className="flex gap-2 flex-col md:flex-row">
+							}}
+						>
+							Save to LocalSave
+						</Button>
 						<Button
 							onClick={() => {
 								toast.promise(localSave.get(category, itemKey), {
