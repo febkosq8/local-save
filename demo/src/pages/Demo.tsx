@@ -185,7 +185,7 @@ export default function Demo() {
 				</div>
 			</div>
 			<div className="flex flex-col p-6 border border-border rounded grow">
-				<h3>Data Management</h3>
+				<h3>Testing & Data Management</h3>
 				<div className="mt-6 flex-col flex gap-4">
 					<TextArea
 						className="w-full text-base"
@@ -198,10 +198,14 @@ export default function Demo() {
 							});
 							if (timeoutRef.current) clearTimeout(timeoutRef.current);
 							timeoutRef.current = setTimeout(() => {
-								toast.info("Try any of the actions from below", { duration: 3500, closeButton: true });
+								if (e.target.value.length > 0) {
+									toast.info("Save this data using the button below", { duration: 3500, closeButton: true });
+								}
 							}, 1500);
 						}}
-						placeholder={"Type some text into here"}
+						placeholder={
+							"Step 1: Type some data in here\nStep 2: Save that data using the button below\nStep 3: Reload the page to reset to default state\nStep 4: Pull your saved data using the button below"
+						}
 					/>
 					<div className="flex gap-2 flex-col md:flex-row">
 						<Button
@@ -216,6 +220,14 @@ export default function Demo() {
 							}}
 						>
 							Save to LocalSave
+						</Button>
+						<Button
+							onClick={() => {
+								window.location.reload();
+							}}
+							variant={"outline"}
+						>
+							Reload this Page
 						</Button>
 						<Button
 							onClick={() => {
