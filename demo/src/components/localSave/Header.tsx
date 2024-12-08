@@ -1,7 +1,9 @@
 import Logo from "@feb/assets/logo.png";
 import ThemeSwitcher from "@feb/components/ui/ThemeSwitcher";
 import { Link } from "react-router";
-import { GitHubLogoIcon } from "@radix-ui/react-icons";
+
+import { faGithub, faNpm } from "@fortawesome/free-brands-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import LinkPill from "../ui/LinkPill";
 
 export default function Header() {
@@ -13,7 +15,10 @@ export default function Header() {
 
 			<div className="flex items-center gap-4">
 				<LinkPill to="https://github.com/febkosq8/local-save">
-					<GitHubLogoIcon className="size-5" />
+					<FontAwesomeIcon icon={faNpm} className="size-5" />
+				</LinkPill>
+				<LinkPill to="https://github.com/febkosq8/local-save">
+					<FontAwesomeIcon icon={faGithub} className="size-5" />
 				</LinkPill>
 				<ThemeSwitcher />
 			</div>

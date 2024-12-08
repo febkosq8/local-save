@@ -225,7 +225,6 @@ export default function Demo() {
 							onClick={() => {
 								window.location.reload();
 							}}
-							variant={"outline"}
 						>
 							Reload this Page
 						</Button>
@@ -296,30 +295,6 @@ export default function Demo() {
 						</Button>
 					</div>
 				</div>
-			</div>
-			<div className="text-lg items-center justify-center flex gap-2">
-				<a
-					href={"https://github.com/febkosq8/local-save"}
-					target="_blank"
-					rel="noopener noreferrer"
-					title={"View on GitHub"}
-				>
-					<Button className="gap-1 items-center justify-center flex" variant={"outline"}>
-						View the source code on
-						<FontAwesomeIcon icon={faGithub} size="xl" />
-					</Button>
-				</a>
-				<a
-					href={"https://www.npmjs.com/package/@febkosq8/local-save"}
-					target="_blank"
-					rel="noopener noreferrer"
-					title={"View on NPM"}
-				>
-					<Button className="gap-1 items-center justify-center flex" variant={"outline"}>
-						Download from
-						<FontAwesomeIcon icon={faNpm} size="xl" />
-					</Button>
-				</a>
 			</div>
 		</div>
 	);
