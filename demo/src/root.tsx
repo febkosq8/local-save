@@ -4,7 +4,7 @@ import "./index.css";
 
 export function meta() {
 	return [
-		{ title: "local-save | Demo" },
+		{ title: "local-save | Playground" },
 		{
 			name: "description",
 			content: "Lightweight wrapper around IndexedDB for secure and structured client-side data storage",
@@ -15,7 +15,7 @@ export function links() {
 	return [
 		{
 			rel: "icon",
-			href: "/src/assets/favicon.png",
+			href: "/assets/favicon.png",
 			type: "image/png",
 		},
 	];

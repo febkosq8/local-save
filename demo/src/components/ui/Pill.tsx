@@ -1,33 +1,21 @@
 import { cx } from "@rinzai/zen";
-import { forwardRef, ReactNode } from "react";
-import { Link } from "react-router";
+import { forwardRef } from "react";
 
-interface PillProps {
-	as?: React.ElementType;
-	children: ReactNode;
+interface PillProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 	active?: boolean;
-	className?: string;
-	href?: string;
-	[key: string]: any;
 }
 
-const Pill = forwardRef<any, PillProps>(({ as, children, active, className, href, ...props }, ref) => {
-	const Tag = as || Link;
+const Pill = forwardRef<HTMLButtonElement, PillProps>(({ active, className, ...props }, ref) => {
 	return (
-		<Tag
-			to={href}
+		<button
+			ref={ref}
 			className={cx(
-				`p-3  text-xl  font-bold ${
-					active ? "bg-blue-600 text-white" : "text-stone-400"
-				} hover:bg-blue-900 hover:text-white`,
+				`rounded-md p-3 text-xl   font-bold transition inline-flex w-full items-center justify-center text-foreground hover:bg-accent hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75  whitespace-nowrap hover:ring-0 hover:outline-none `,
+				active ? "text-primary" : "text-muted-foreground",
 				className,
 			)}
-			ref={ref}
 			{...props}
-			viewTransition
-		>
-			{children}
-		</Tag>
+		/>
 	);
 });
 

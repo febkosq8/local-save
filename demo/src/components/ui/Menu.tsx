@@ -19,21 +19,17 @@ interface MenuComponent extends React.FC<MenuProps> {
 const MenuComponent: React.FC<MenuProps> = ({ className, active, buttonText, children }) => {
 	return (
 		<DropdownBaseMenu.Root>
-			<DropdownBaseMenu.Trigger
-				className={cx(
-					`w-fit rounded-md p-3 text-xl font-bold inline-flex items-center justify-center  text-stone-400 hover:bg-blue-800 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75`,
-					active ? "bg-blue-600 text-white" : "",
-					className
-				)}
-			>
-				{buttonText}
-				<FontAwesomeIcon icon={faChevronDown} className="-mr-1 ml-2 h-4 w-4" aria-hidden="true" />
+			<DropdownBaseMenu.Trigger asChild>
+				<Pill active={active} className={cx("w-fit", className)}>
+					{buttonText}
+					<FontAwesomeIcon icon={faChevronDown} className="-mr-1 ml-2 h-4 w-4" aria-hidden="true" />
+				</Pill>
 			</DropdownBaseMenu.Trigger>
 			<DropdownBaseMenu.Portal>
 				<DropdownBaseMenu.Content
 					loop={true}
 					sideOffset={2}
-					className="w-fit origin-top-right divide-y border-2 border-gray-600 divide-gray-100 rounded-md bg-neutral-900 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+					className="w-fit origin-top-right divide-y border-2 border-border divide-border rounded-md bg-background shadow-lg ring-1 ring-background ring-opacity-5 focus:outline-none focus-visible:ring-0"
 				>
 					{children}
 				</DropdownBaseMenu.Content>
@@ -56,7 +52,7 @@ const MenuSub = ({ active, buttonText, children }: MenuSubProps) => {
 	return (
 		<DropdownBaseMenu.Sub>
 			<DropdownBaseMenu.SubTrigger asChild>
-				<Pill as={"div"} active={active} className="flex w-full items-center justify-between whitespace-nowrap">
+				<Pill active={active} className="flex w-full items-center justify-between whitespace-nowrap">
 					{buttonText}
 					<FontAwesomeIcon icon={faChevronRight} className="-mr-1 ml-2 h-4 w-4" aria-hidden="true" />
 				</Pill>
