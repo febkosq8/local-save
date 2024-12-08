@@ -14,6 +14,10 @@
 
 ---
 
+#### Looking to experience how `local-save` can securely store and retrieve data?
+
+👉 **[Try the Live Demo](https://local-save.febkosq8.me/)** 👈
+
 ## Features
 
 -   **Lightweight & Widespread Support:** No external dependencies and works in all modern browsers.
