@@ -14,7 +14,7 @@ export default function Header() {
 			</Link>
 
 			<div className="flex items-center gap-4">
-				<LinkPill to="https://github.com/febkosq8/local-save">
+				<LinkPill to="https://www.npmjs.com/package/@febkosq8/local-save">
 					<FontAwesomeIcon icon={faNpm} className="size-5" />
 				</LinkPill>
 				<LinkPill to="https://github.com/febkosq8/local-save">
