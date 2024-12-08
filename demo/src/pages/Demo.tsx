@@ -2,8 +2,6 @@ import { Button } from "@feb/components/ui/Button";
 import Input from "@feb/components/ui/Input";
 import { Switch } from "@feb/components/ui/Switch";
 import TextArea from "@feb/components/ui/TextArea";
-import { faGithub, faNpm } from "@fortawesome/free-brands-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import LocalSave from "@febkosq8/local-save";
 import { cx, Dropdown } from "@rinzai/zen";
 import { useMemo, useRef, useState } from "react";
@@ -137,7 +135,7 @@ export default function Demo() {
 										<Button
 											onClick={() => {
 												setLocalSaveConfig((curr) => {
-													curr.encryptionKey = undefined;
+													curr.encryptionKey = "";
 													return structuredClone(curr);
 												});
 											}}
