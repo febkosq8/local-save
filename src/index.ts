@@ -1,12 +1,12 @@
-import LocalSaveEncryptionKeyError from '@local-save/utils/errors/LocalSaveEncryptionKeyError';
-import LocalSaveError from '@local-save/utils/errors/LocalSaveError';
-import Logger from '@local-save/utils/logger';
+import LocalSaveEncryptionKeyError from 'src/utils/errors/LocalSaveEncryptionKeyError';
+import LocalSaveError from 'src/utils/errors/LocalSaveError';
+import Logger from 'src/utils/logger';
 import {
     arrayBufferToBase64,
     base64ToArrayBuffer,
     isEncryptionKeyDefined,
     isValidEncryptionKey,
-} from '@local-save/utils/utils';
+} from 'src/utils/utils';
 
 class LocalSave {
     dbName: DBName = 'LocalSave';

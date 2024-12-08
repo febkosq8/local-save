@@ -18,6 +18,11 @@ export default defineConfig({
             name: 'chromium',
             enabled: true,
             screenshotFailures: false,
+            providerOptions: {
+                launch: {
+                    channel: 'chrome',
+                },
+            },
         },
     },
 });

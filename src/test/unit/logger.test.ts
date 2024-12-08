@@ -1,4 +1,4 @@
-import Logger from '@local-save/utils/logger';
+import Logger from 'src/utils/logger';
 
 describe('Logger', () => {
     it('should throw an error if Logger class is instantiated', () => {

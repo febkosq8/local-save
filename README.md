@@ -1,5 +1,3 @@
-# local-save
-
 <div align="center">
 	<p>
 		<a href="https://local-save.febkosq8.me/"><img src="https://github.com/febkosq8/local-save/blob/main/src/assets/local-save_transparent_trimmed.png?raw=true" width="400" alt="local-save" /></a>

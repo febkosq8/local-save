@@ -1,4 +1,4 @@
-import { arrayBufferToBase64, base64ToArrayBuffer, isValidEncryptionKey } from '@local-save/utils/utils';
+import { arrayBufferToBase64, base64ToArrayBuffer, isValidEncryptionKey } from 'src/utils/utils';
 
 describe('Utils', () => {
     describe('isValidEncryptionKey', () => {
