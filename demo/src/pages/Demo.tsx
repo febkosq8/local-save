@@ -255,7 +255,7 @@ export default function Demo() {
 							}}
 							variant={"destructive"}
 						>
-							Remove Current Key from Category
+							Delete data under key from category
 						</Button>
 						<Button
 							onClick={() => {
@@ -267,7 +267,7 @@ export default function Demo() {
 							}}
 							variant={"destructive"}
 						>
-							Clear the category
+							Delete all data from category
 						</Button>
 						<Button
 							onClick={() => {
@@ -279,7 +279,7 @@ export default function Demo() {
 							}}
 							variant={"destructive"}
 						>
-							Destroy
+							Delete all data from database
 						</Button>
 						<Button
 							onClick={() => {
