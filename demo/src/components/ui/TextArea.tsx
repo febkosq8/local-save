@@ -1,4 +1,4 @@
-import { clsx } from "clsx";
+import { cx } from "@rinzai/zen";
 import { ComponentPropsWithoutRef } from "react";
 
 const TextArea = ({ className, ...rest }: ComponentPropsWithoutRef<"textarea">) => {
@@ -6,7 +6,7 @@ const TextArea = ({ className, ...rest }: ComponentPropsWithoutRef<"textarea">) 
 		<textarea
 			{...rest}
 			autoComplete="off"
-			className={clsx(
+			className={cx(
 				className,
 				"min-h-[200px] max-h-96 !overflow-auto",
 				"placeholder:gray-800 rounded border border-border bg-input p-2 text-foreground",
