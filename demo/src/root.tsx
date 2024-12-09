@@ -15,7 +15,7 @@ export function links() {
 	return [
 		{
 			rel: "icon",
-			href: "/assets/favicon.png",
+			href: "/assets/favicon.ico",
 			type: "image/png",
 		},
 	];
