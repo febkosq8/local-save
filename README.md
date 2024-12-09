@@ -1,6 +1,14 @@
-![](https://github.com/febkosq8/local-save/blob/main/src/assets/local-save_transparent_trimmed.png?raw=true)
-
-![NPM Version](https://img.shields.io/npm/v/%40febkosq8%2Flocal-save) ![NPM Downloads](https://img.shields.io/npm/dm/%40febkosq8%2Flocal-save)
+<div align="center">
+	<p>
+		<a href="https://local-save.febkosq8.me/"><img src="https://github.com/febkosq8/local-save/blob/main/src/assets/local-save_transparent_trimmed.png?raw=true" width="400" alt="local-save" /></a>
+	</p>
+	<p>
+		<a href="https://www.npmjs.com/package/@febkosq8/local-save">
+		<img alt="NPM Version" src="https://img.shields.io/npm/v/%40febkosq8%2Flocal-save"></a>
+		<a href="https://www.npmjs.com/package/@febkosq8/local-save">
+		<img alt="NPM Downloads" src="https://img.shields.io/npm/dm/%40febkosq8%2Flocal-save"></a>
+	</p>
+</div>
 
 `local-save` is a lightweight wrapper around IndexedDB for secure and structured client-side data storage. It provides encryption, expiration, and organized data storage across configurable categories.
 
