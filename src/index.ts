@@ -267,6 +267,12 @@ class LocalSave {
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the saving process.
      */
     async set(category: Category, itemKey: string, data: unknown) {
+        if (this.printLogs) {
+            Logger.debug(`set() called to store data with following props`, {
+                category,
+                itemKey,
+            });
+        }
         let payload: DBItem | DBItemEncryptedBase64 = {
             timestamp: Date.now(),
             data,
@@ -319,6 +325,12 @@ class LocalSave {
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the retrieval process.
      */
     async get(category: Category, itemKey: string) {
+        if (this.printLogs) {
+            Logger.debug(`get() called to retrieve data with following props`, {
+                category,
+                itemKey,
+            });
+        }
         const store = await this.getStore(category);
         return new Promise<DBItem | null>((resolve, reject) => {
             const getRequest = store.get(itemKey);
@@ -377,6 +389,12 @@ class LocalSave {
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the removal process.
      */
     async remove(category: Category, itemKey: string) {
+        if (this.printLogs) {
+            Logger.debug(`remove() called to remove data with following props`, {
+                category,
+                itemKey,
+            });
+        }
         const store = await this.getStore(category, 'readwrite');
         return new Promise<true>((resolve, reject) => {
             const deleteRequest = store.delete(itemKey);
@@ -411,6 +429,9 @@ class LocalSave {
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the clearing process.
      */
     async clear(category: Category) {
+        if (this.printLogs) {
+            Logger.debug(`clear() called to store all data under '${category}' category`);
+        }
         const store = await this.getStore(category, 'readwrite');
         return new Promise<true>((resolve, reject) => {
             const clearRequest = store.clear();
@@ -450,6 +471,9 @@ class LocalSave {
      * @throws {LocalSaveError} - Throws an error if there is an issue accessing the store or removing items.
      */
     async expire(days: number = this.expiryThreshold): Promise<true> {
+        if (this.printLogs) {
+            Logger.debug(`expire() called to expire data older than ${days} days`);
+        }
         const checkDate = Date.now() - days * 86400000;
         for (const category of this.categories) {
             const store = await this.getStore(category);
@@ -507,6 +531,9 @@ class LocalSave {
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the deletion process.
      */
     async destroy() {
+        if (this.printLogs) {
+            Logger.debug(`destroy() called to wipe all data under all categories`);
+        }
         return new Promise<true>((resolve, reject) => {
             const deleteRequest = indexedDB.deleteDatabase(this.dbName);
             deleteRequest.onsuccess = () => {
