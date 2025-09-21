@@ -46,10 +46,10 @@ export default function Demo() {
 							Category
 							<Dropdown
 								className={cx(
-									"!w-full",
+									"w-full!",
 									"h-10",
 									"placeholder:gray-800 rounded border border-border bg-input pl-5 text-foreground",
-									"focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring",
+									"focus:border-transparent focus:outline-hidden focus:ring-2 focus:ring-ring",
 									"disabled:cursor-not-allowed disabled:border-muted",
 									"whitespace-pre-wrap",
 								)}

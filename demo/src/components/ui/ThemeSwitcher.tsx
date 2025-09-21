@@ -39,7 +39,7 @@ export default function ThemeSwitcher() {
 	return (
 		<Menu buttonText={<FontAwesomeIcon icon={colorModeIcon[colorMode] ?? faLaptop} />}>
 			<>
-				<Menu.Item className="focus-visible:outline-none">
+				<Menu.Item className="focus-visible:outline-hidden">
 					<Pill
 						active={colorMode === "system"}
 						title="System Theme"
@@ -51,7 +51,7 @@ export default function ThemeSwitcher() {
 						<FontAwesomeIcon icon={faLaptop} className={"size-4"} />
 					</Pill>
 				</Menu.Item>
-				<Menu.Item className="focus-visible:outline-none">
+				<Menu.Item className="focus-visible:outline-hidden">
 					<Pill
 						active={colorMode === "light"}
 						title="Light Theme"
@@ -63,7 +63,7 @@ export default function ThemeSwitcher() {
 						<FontAwesomeIcon icon={faSun} className={"size-4"} />
 					</Pill>
 				</Menu.Item>
-				<Menu.Item className="focus-visible:outline-none">
+				<Menu.Item className="focus-visible:outline-hidden">
 					<Pill
 						active={colorMode === "dark"}
 						title="Dark Theme"
