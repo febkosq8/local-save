@@ -20,13 +20,13 @@
 
 ## Features
 
--   **Lightweight & Widespread Support:** No external dependencies and works in all modern browsers.
--   **TypeScript Support :** Written in TypeScript for maximum type-safety and a great developer experience.
--   **Encryption Support :** Uses [SubtleCrypto](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto) for secure data encryption with [AES-GCM](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt#aes-gcm) algorithm.
--   **Category Management :** Organize data into predefined categories.
--   **Data Expiry :** Allows setting an expiration threshold for data and a method to clear expired data.
--   **IndexedDB Management :** Handles IndexedDB, object store creation and IndexedDB versioning management automatically.
--   **Logging :** Debug logs for detailed insights.
+- **Lightweight & Widespread Support:** No external dependencies and works in all modern browsers.
+- **TypeScript Support :** Written in TypeScript for maximum type-safety and a great developer experience.
+- **Encryption Support :** Uses [SubtleCrypto](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto) for secure data encryption with [AES-GCM](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt#aes-gcm) algorithm.
+- **Category Management :** Organize data into predefined categories.
+- **Data Expiry :** Allows setting an expiration threshold for data and a method to clear expired data.
+- **IndexedDB Management :** Handles IndexedDB, object store creation and IndexedDB versioning management automatically.
+- **Logging :** Debug logs for detailed insights.
 
 ---
 
