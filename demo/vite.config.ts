@@ -17,7 +17,4 @@ export default defineConfig({
 		outDir: "build",
 	},
 	plugins: [reactRouter(), tsconfigPaths()],
-	define: {
-		"process.env": process.env,
-	},
 });

@@ -1,4 +1,4 @@
-import "@rinzai/zen/dist/style.css";
+import "@rinzai/zen/css";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import "./index.css";
 
