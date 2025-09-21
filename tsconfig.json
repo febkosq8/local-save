@@ -19,7 +19,8 @@
         "baseUrl": ".",
         "paths": {
             "@local-save/*": ["src/*"]
-        }
+        },
+        "types": ["@vitest/browser/providers/playwright"]
     },
     "allowDefaultProject": true,
     "exclude": ["node_modules", "dist", "demo"]

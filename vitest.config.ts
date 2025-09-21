@@ -15,14 +15,16 @@ export default defineConfig({
         testTimeout: 30000,
         browser: {
             provider: 'playwright',
-            name: 'chromium',
             enabled: true,
             screenshotFailures: false,
-            providerOptions: {
-                launch: {
-                    channel: 'chrome',
+            instances: [
+                {
+                    browser: 'chromium',
+                    launch: {
+                        channel: 'chrome',
+                    },
                 },
-            },
+            ],
         },
     },
 });
