@@ -5,18 +5,20 @@ import tseslint from 'typescript-eslint';
 
 export default defineConfig(
     {
-        ignores: ['**/*.js', '**/*.d.ts', 'dist/*'],
+        ignores: ['**/*.js', '**/*.d.ts', 'dist/*', '**/build/*', '**/node_modules/*'],
     },
     eslint.configs.recommended,
     ...tseslint.configs.recommendedTypeChecked,
     {
+        files: ['**/*.ts', '**/*.tsx'],
         languageOptions: {
             parserOptions: {
-                project: ['tsconfig.json'],
                 projectService: true,
+                tsconfigRootDir: import.meta.dirname,
             },
             globals: {
                 ...globals.browser,
+                ...globals.node,
             },
         },
         rules: {
@@ -33,6 +35,15 @@ export default defineConfig(
                     checksVoidReturn: false,
                 },
             ],
+        },
+    },
+    {
+        files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
+        ...tseslint.configs.disableTypeChecked,
+        languageOptions: {
+            globals: {
+                ...globals.node,
+            },
         },
     },
 );
