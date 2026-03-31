@@ -1,7 +1,9 @@
-import tsconfigPaths from 'vite-tsconfig-paths';
+import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 export default defineConfig({
-    plugins: [tsconfigPaths()],
+    resolve: {
+        tsconfigPaths: true,
+    },
     test: {
         include: ['src/test/**/*.test.ts'],
         name: 'local-save',
@@ -14,15 +16,12 @@ export default defineConfig({
         silent: true,
         testTimeout: 30000,
         browser: {
-            provider: 'playwright',
+            provider: playwright(),
             enabled: true,
             screenshotFailures: false,
             instances: [
                 {
                     browser: 'chromium',
-                    launch: {
-                        channel: 'chrome',
-                    },
                 },
             ],
         },

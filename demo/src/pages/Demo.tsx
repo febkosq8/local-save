@@ -19,7 +19,7 @@ export default function Demo() {
 	const [category, setCategory] = useState("userData");
 	const [itemKey, setItemKey] = useState("test");
 	const [userData, setUserData] = useState<string>();
-	const timeoutRef = useRef<NodeJS.Timeout>();
+	const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
 	return (
 		<div className="flex flex-col  w-full p-5 gap-4">
@@ -223,8 +223,24 @@ export default function Demo() {
 							onClick={() => {
 								window.location.reload();
 							}}
+							variant={"secondary"}
 						>
 							Reload this Page
+						</Button>
+						<Button
+							onClick={() => {
+								toast.promise(localSave.listKeys(category), {
+									loading: `Listing item keys in ${category}`,
+									success: (keys) => {
+										if (keys.length === 0) return `No item keys found in ${category}`;
+										return `A total of '${keys.length}' item keys are in '${category}'\n${keys.map((k, index) => `${index + 1}: '${k}'`).join("\n")}`;
+									},
+									error: `Failed to list keys in ${category}`,
+								});
+							}}
+							variant={"secondary"}
+						>
+							List all item keys in current category
 						</Button>
 						<Button
 							onClick={() => {
