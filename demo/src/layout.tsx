@@ -6,7 +6,16 @@ function App() {
 		<div className="text-slate-600 dark:text-slate-100 bg-background">
 			<Header />
 			<Outlet />
-			<Toaster richColors />
+			<Toaster
+				richColors
+				className="flex"
+				toastOptions={{
+					classNames: {
+						title: "whitespace-pre-wrap",
+						description: "whitespace-pre-wrap",
+					},
+				}}
+			/>
 		</div>
 	);
 }
