@@ -6,7 +6,7 @@ export default defineConfig({
     clean: true,
     format: ['esm', 'cjs'],
     name: 'local-save',
-    target: 'node18',
+    target: 'node24',
     treeshake: true,
     splitting: false,
     sourcemap: true,

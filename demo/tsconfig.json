@@ -19,9 +19,8 @@
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"noFallthroughCasesInSwitch": true,
-		"baseUrl": ".",
 		"paths": {
-			"@feb/*": ["src/*"]
+			"@feb/*": ["./src/*"]
 		}
 	},
 	"exclude": ["node_modules", "dist", "build", "coverage"],

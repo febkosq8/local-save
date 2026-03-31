@@ -3,6 +3,7 @@
     "compilerOptions": {
         "target": "ESNext",
         "lib": ["ESNext", "DOM"],
+        "ignoreDeprecations": "6.0",
         "skipLibCheck": true,
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
@@ -15,12 +16,9 @@
         "resolveJsonModule": true,
         "isolatedModules": true,
         "noEmit": true,
-        // "verbatimModuleSyntax": true,
-        "baseUrl": ".",
         "paths": {
-            "@local-save/*": ["src/*"]
-        },
-        "types": ["@vitest/browser/providers/playwright"]
+            "@local-save/*": ["./src/*"]
+        }
     },
     "allowDefaultProject": true,
     "exclude": ["node_modules", "dist", "demo"]

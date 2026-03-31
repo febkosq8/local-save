@@ -76,6 +76,15 @@ _Here `userData` is the category. The key is `user001` for the data `{ name: "Jo
 await localSave.set('userData', 'user001', { name: 'John Doe', age: 30 });
 ```
 
+### List saved data keys in a category
+
+List all keys of the data stored in a category
+
+```typescript
+const keys = await localSave.listKeys('userData');
+console.log(keys); // ['user001']
+```
+
 ### Fetching data
 
 Fetch data from a category using the `category` and `key`

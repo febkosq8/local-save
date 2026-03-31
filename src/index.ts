@@ -1,12 +1,12 @@
-import LocalSaveEncryptionKeyError from 'src/utils/errors/LocalSaveEncryptionKeyError';
-import LocalSaveError from 'src/utils/errors/LocalSaveError';
-import Logger from 'src/utils/logger';
+import LocalSaveEncryptionKeyError from '@local-save/utils/errors/LocalSaveEncryptionKeyError';
+import LocalSaveError from '@local-save/utils/errors/LocalSaveError';
+import Logger from '@local-save/utils/logger';
 import {
     arrayBufferToBase64,
     base64ToArrayBuffer,
     isEncryptionKeyDefined,
     isValidEncryptionKey,
-} from 'src/utils/utils';
+} from '@local-save/utils/utils';
 
 class LocalSave {
     dbName: DBName = 'LocalSave';
@@ -78,6 +78,24 @@ class LocalSave {
                 return reject(new LocalSaveError(openRequest.error?.message ?? 'Error opening database'));
             };
         });
+    }
+
+    /**
+     * Lists all object stores currently available in the configured database.
+     *
+     * @internal
+     *
+     * @returns A promise that resolves to an array of object store names.
+     */
+    private async listStores() {
+        const db = await this.openDB();
+        const stores = Array.from(db.objectStoreNames);
+        if (this.printLogs) {
+            Logger.debug(`Object stores listed successfully`, {
+                stores,
+            });
+        }
+        return stores;
     }
 
     /**
@@ -374,6 +392,55 @@ class LocalSave {
             };
             getRequest.onerror = () => {
                 return reject(new LocalSaveError(getRequest.error?.message ?? 'Error getting data'));
+            };
+        });
+    }
+
+    /**
+     * Lists all categories (object stores) currently available in the database.
+     *
+     * @returns A promise that resolves to an array of category names.
+     */
+    async listCategories(): Promise<Category[]> {
+        if (this.printLogs) {
+            Logger.debug(`listCategories() called to list all categories`);
+        }
+        return await this.listStores();
+    }
+
+    /**
+     * Lists all item keys stored under the specified category.
+     *
+     * @param category The category from which item keys should be listed.
+     *
+     * @returns A promise that resolves to an array of item keys.
+     *
+     * @throws {LocalSaveError} Will reject the promise if an error occurs while listing keys.
+     */
+    async listKeys(category: Category) {
+        if (this.printLogs) {
+            Logger.debug(`listKeys() called to list all keys for category`, {
+                category,
+            });
+        }
+        const store = await this.getStore(category);
+        return new Promise<string[]>((resolve, reject) => {
+            const keysRequest = store.getAllKeys();
+            keysRequest.onsuccess = () => {
+                const keys = keysRequest.result as string[];
+                if (this.printLogs) {
+                    Logger.debug(`Keys listed successfully for category`, {
+                        category,
+                        keys,
+                    });
+                }
+                resolve(keys);
+            };
+            keysRequest.onerror = () => {
+                if (this.printLogs) {
+                    Logger.error(`Error listing keys for category [category:${category}]`, keysRequest.error);
+                }
+                reject(new LocalSaveError(keysRequest.error?.message ?? 'Error listing keys'));
             };
         });
     }
