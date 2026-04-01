@@ -12,15 +12,31 @@ class LocalSave {
     dbName: DBName = 'LocalSave';
     encryptionKey?: EncryptionKey;
     categories: Category[] = ['userData'];
-    expiryThreshold: number = 30;
+    expiryThreshold: PositiveNumber = 30;
+    blockedTimeoutThreshold: PositiveNumber = 10 * 1000;
     clearOnDecryptError: boolean = true;
     printLogs: boolean = false;
     constructor(config?: Config) {
         this.dbName = config?.dbName ?? this.dbName;
         this.encryptionKey = config?.encryptionKey;
         this.categories = config?.categories ?? this.categories;
-        this.expiryThreshold = config?.expiryThreshold ?? this.expiryThreshold;
         this.clearOnDecryptError = config?.clearOnDecryptError ?? this.clearOnDecryptError;
+        this.expiryThreshold = config?.expiryThreshold ?? this.expiryThreshold;
+        if (
+            typeof this.expiryThreshold !== 'number' ||
+            !Number.isFinite(this.expiryThreshold) ||
+            this.expiryThreshold <= 0
+        ) {
+            throw new LocalSaveError('expiryThreshold should be a positive number');
+        }
+        this.blockedTimeoutThreshold = config?.blockedTimeoutThreshold ?? this.blockedTimeoutThreshold;
+        if (
+            typeof this.blockedTimeoutThreshold !== 'number' ||
+            !Number.isFinite(this.blockedTimeoutThreshold) ||
+            this.blockedTimeoutThreshold <= 0
+        ) {
+            throw new LocalSaveError('blockedTimeoutThreshold should be a positive number');
+        }
         this.printLogs = config?.printLogs ?? this.printLogs;
 
         if (!!config?.encryptionKey && !isValidEncryptionKey(config?.encryptionKey)) {
@@ -43,6 +59,30 @@ class LocalSave {
     private openDB(version?: number) {
         return new Promise<IDBDatabase>((resolve, reject) => {
             const openRequest = indexedDB.open(this.dbName, version);
+            let settled = false;
+            let blockedTimeout: ReturnType<typeof setTimeout> | undefined;
+
+            const settleResolve = (db: IDBDatabase) => {
+                if (settled) {
+                    db.close();
+                    return;
+                }
+                settled = true;
+                if (blockedTimeout) {
+                    clearTimeout(blockedTimeout);
+                }
+                resolve(db);
+            };
+
+            const settleReject = (error: LocalSaveError) => {
+                if (settled) return;
+                settled = true;
+                if (blockedTimeout) {
+                    clearTimeout(blockedTimeout);
+                }
+                reject(error);
+            };
+
             openRequest.onupgradeneeded = () => {
                 const db = openRequest.result;
                 if (this.printLogs) {
@@ -63,19 +103,37 @@ class LocalSave {
                 }
             };
             openRequest.onsuccess = () => {
+                const db = openRequest.result;
+                db.onversionchange = () => {
+                    if (this.printLogs) {
+                        Logger.warn(`Closing stale database connection on version change [dbName:${this.dbName}]`);
+                    }
+                    db.close();
+                };
                 if (this.printLogs) {
                     Logger.debug(`Database opened successfully`, {
                         dbName: this.dbName,
-                        version: openRequest.result.version,
+                        version: db.version,
                     });
                 }
-                return resolve(openRequest.result);
+                settleResolve(db);
             };
             openRequest.onerror = () => {
                 if (this.printLogs) {
                     Logger.error(`LocalSaveError opening database [dbName:${this.dbName}]`, openRequest.error);
                 }
-                return reject(new LocalSaveError(openRequest.error?.message ?? 'Error opening database'));
+                settleReject(new LocalSaveError(openRequest.error?.message ?? 'Error opening database'));
+            };
+            openRequest.onblocked = () => {
+                if (this.printLogs) {
+                    Logger.warn(`Opening database is blocked by other open connections [dbName:${this.dbName}]`);
+                }
+                if (blockedTimeout || settled) return;
+                blockedTimeout = setTimeout(() => {
+                    settleReject(
+                        new LocalSaveError('Opening database timed out because it is blocked by open connections'),
+                    );
+                }, this.blockedTimeoutThreshold);
             };
         });
     }
@@ -89,13 +147,17 @@ class LocalSave {
      */
     private async listStores() {
         const db = await this.openDB();
-        const stores = Array.from(db.objectStoreNames);
-        if (this.printLogs) {
-            Logger.debug(`Object stores listed successfully`, {
-                stores,
-            });
+        try {
+            const stores = Array.from(db.objectStoreNames);
+            if (this.printLogs) {
+                Logger.debug(`Object stores listed successfully`, {
+                    stores,
+                });
+            }
+            return stores;
+        } finally {
+            db.close();
         }
-        return stores;
     }
 
     /**
@@ -130,11 +192,28 @@ class LocalSave {
             db.close();
             db = await this.openDB(currVersion + 1);
         } else if (!db.objectStoreNames.contains(category)) {
+            const dbVersion = db.version;
+            db.close();
             throw new LocalSaveError(
-                `Requested object store not found in current database version [category:${category} / dbName:${this.dbName} / version:${db.version}].`,
+                `Requested object store not found in current database version [category:${category} / dbName:${this.dbName} / version:${dbVersion}].`,
             );
         }
-        const transaction = db.transaction(category, mode);
+        let transaction: IDBTransaction;
+        try {
+            transaction = db.transaction(category, mode);
+        } catch (error) {
+            db.close();
+            throw new LocalSaveError(error instanceof Error ? error.message : 'Error creating transaction');
+        }
+        transaction.oncomplete = () => {
+            db.close();
+        };
+        transaction.onerror = () => {
+            db.close();
+        };
+        transaction.onabort = () => {
+            db.close();
+        };
         const store = transaction.objectStore(category);
         if (this.printLogs) {
             Logger.debug(`Object store retrieved from database`, {
@@ -424,25 +503,30 @@ class LocalSave {
             });
         }
         const store = await this.getStore(category);
-        return new Promise<string[]>((resolve, reject) => {
-            const keysRequest = store.getAllKeys();
-            keysRequest.onsuccess = () => {
-                const keys = keysRequest.result as string[];
-                if (this.printLogs) {
-                    Logger.debug(`Keys listed successfully for category`, {
-                        category,
-                        keys,
-                    });
-                }
-                resolve(keys);
-            };
-            keysRequest.onerror = () => {
-                if (this.printLogs) {
-                    Logger.error(`Error listing keys for category [category:${category}]`, keysRequest.error);
-                }
-                reject(new LocalSaveError(keysRequest.error?.message ?? 'Error listing keys'));
-            };
-        });
+        const db = store.transaction.db;
+        try {
+            return await new Promise<string[]>((resolve, reject) => {
+                const keysRequest = store.getAllKeys();
+                keysRequest.onsuccess = () => {
+                    const keys = keysRequest.result as string[];
+                    if (this.printLogs) {
+                        Logger.debug(`Keys listed successfully for category`, {
+                            category,
+                            keys,
+                        });
+                    }
+                    resolve(keys);
+                };
+                keysRequest.onerror = () => {
+                    if (this.printLogs) {
+                        Logger.error(`Error listing keys for category [category:${category}]`, keysRequest.error);
+                    }
+                    reject(new LocalSaveError(keysRequest.error?.message ?? 'Error listing keys'));
+                };
+            });
+        } finally {
+            db.close();
+        }
     }
 
     /**
@@ -541,9 +625,13 @@ class LocalSave {
         if (this.printLogs) {
             Logger.debug(`expire() called to expire data older than ${days} days`);
         }
+        if (typeof days !== 'number' || !Number.isFinite(days) || days <= 0) {
+            throw new LocalSaveError('days should be a positive number');
+        }
         const checkDate = Date.now() - days * 86400000;
         for (const category of this.categories) {
             const store = await this.getStore(category);
+            const db = store.transaction.db;
             try {
                 const keys = await new Promise<IDBValidKey[]>((resolve, reject) => {
                     const keysRequest = store.getAllKeys();
@@ -585,6 +673,8 @@ class LocalSave {
                     Logger.error(`Expiring data older than '${days}' days failed`, error);
                 }
                 throw error;
+            } finally {
+                db.close();
             }
         }
         return true;
@@ -603,20 +693,51 @@ class LocalSave {
         }
         return new Promise<true>((resolve, reject) => {
             const deleteRequest = indexedDB.deleteDatabase(this.dbName);
+            let settled = false;
+            let blockedTimeout: ReturnType<typeof setTimeout> | undefined;
+
+            const settleResolve = () => {
+                if (settled) return;
+                settled = true;
+                if (blockedTimeout) {
+                    clearTimeout(blockedTimeout);
+                }
+                resolve(true);
+            };
+
+            const settleReject = (error: LocalSaveError) => {
+                if (settled) return;
+                settled = true;
+                if (blockedTimeout) {
+                    clearTimeout(blockedTimeout);
+                }
+                reject(error);
+            };
+
             deleteRequest.onsuccess = () => {
                 if (this.printLogs) {
                     Logger.debug(`Database deleted successfully`, {
                         dbName: this.dbName,
-                        version: deleteRequest.result,
                     });
                 }
-                resolve(true);
+                settleResolve();
             };
             deleteRequest.onerror = () => {
                 if (this.printLogs) {
                     Logger.error(`Error deleting database [dbName:${this.dbName}]`);
                 }
-                reject(new LocalSaveError(deleteRequest.error?.message ?? 'Error deleting database'));
+                settleReject(new LocalSaveError(deleteRequest.error?.message ?? 'Error deleting database'));
+            };
+            deleteRequest.onblocked = () => {
+                if (this.printLogs) {
+                    Logger.warn(`Deleting database is blocked by an open connection [dbName:${this.dbName}]`);
+                }
+                if (blockedTimeout || settled) return;
+                blockedTimeout = setTimeout(() => {
+                    settleReject(
+                        new LocalSaveError('Deleting database timed out because it is blocked by open connections'),
+                    );
+                }, this.blockedTimeoutThreshold);
             };
         });
     }
@@ -624,6 +745,7 @@ class LocalSave {
 export type DBName = string;
 export type EncryptionKey = string;
 export type Category = string;
+export type PositiveNumber = number;
 export interface DBItem {
     timestamp: number;
     data: unknown;
@@ -656,9 +778,15 @@ export interface Config {
     /**
      * The number of days to use as the threshold for expiring data
      *
-     * @default '30' days
+        * @default 30
      */
-    expiryThreshold?: number;
+    expiryThreshold?: PositiveNumber;
+    /**
+     * The time in milliseconds to wait before failing blocked IndexedDB open/delete requests.
+     *
+     * @default 10000
+     */
+    blockedTimeoutThreshold?: PositiveNumber;
     /**
      * Whether to clear all data for a category if an error occurs while decrypting data
      * Most likely reason of error is due to an incorrect encryption key
