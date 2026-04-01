@@ -12,7 +12,8 @@ class LocalSave {
     dbName: DBName = 'LocalSave';
     encryptionKey?: EncryptionKey;
     categories: Category[] = ['userData'];
-    expiryThreshold: number = 30;
+    expiryThreshold: PositiveNumber = 30;
+    blockedTimeoutThreshold: PositiveNumber = 10 * 1000;
     clearOnDecryptError: boolean = true;
     printLogs: boolean = false;
     constructor(config?: Config) {
@@ -20,7 +21,21 @@ class LocalSave {
         this.encryptionKey = config?.encryptionKey;
         this.categories = config?.categories ?? this.categories;
         this.expiryThreshold = config?.expiryThreshold ?? this.expiryThreshold;
-        this.clearOnDecryptError = config?.clearOnDecryptError ?? this.clearOnDecryptError;
+        if (
+            typeof this.expiryThreshold !== 'number' ||
+            !Number.isFinite(this.expiryThreshold) ||
+            this.expiryThreshold <= 0
+        ) {
+            throw new LocalSaveError('expiryThreshold should be a positive number');
+        }
+        this.blockedTimeoutThreshold = config?.blockedTimeoutThreshold ?? this.blockedTimeoutThreshold;
+        if (
+            typeof this.blockedTimeoutThreshold !== 'number' ||
+            !Number.isFinite(this.blockedTimeoutThreshold) ||
+            this.blockedTimeoutThreshold <= 0
+        ) {
+            throw new LocalSaveError('blockedTimeoutThreshold should be a positive number');
+        }
         this.printLogs = config?.printLogs ?? this.printLogs;
 
         if (!!config?.encryptionKey && !isValidEncryptionKey(config?.encryptionKey)) {
@@ -117,7 +132,7 @@ class LocalSave {
                     settleReject(
                         new LocalSaveError('Opening database timed out because it is blocked by open connections'),
                     );
-                }, 5 * 1000);
+                }, this.blockedTimeoutThreshold);
             };
         });
     }
@@ -182,7 +197,13 @@ class LocalSave {
                 `Requested object store not found in current database version [category:${category} / dbName:${this.dbName} / version:${dbVersion}].`,
             );
         }
-        const transaction = db.transaction(category, mode);
+        let transaction: IDBTransaction;
+        try {
+            transaction = db.transaction(category, mode);
+        } catch (error) {
+            db.close();
+            throw new LocalSaveError(error instanceof Error ? error.message : 'Error creating transaction');
+        }
         transaction.oncomplete = () => {
             db.close();
         };
@@ -603,6 +624,9 @@ class LocalSave {
         if (this.printLogs) {
             Logger.debug(`expire() called to expire data older than ${days} days`);
         }
+        if (typeof days !== 'number' || !Number.isFinite(days) || days <= 0) {
+            throw new LocalSaveError('days should be a positive number');
+        }
         const checkDate = Date.now() - days * 86400000;
         for (const category of this.categories) {
             const store = await this.getStore(category);
@@ -668,6 +692,27 @@ class LocalSave {
         }
         return new Promise<true>((resolve, reject) => {
             const deleteRequest = indexedDB.deleteDatabase(this.dbName);
+            let settled = false;
+            let blockedTimeout: ReturnType<typeof setTimeout> | undefined;
+
+            const settleResolve = () => {
+                if (settled) return;
+                settled = true;
+                if (blockedTimeout) {
+                    clearTimeout(blockedTimeout);
+                }
+                resolve(true);
+            };
+
+            const settleReject = (error: LocalSaveError) => {
+                if (settled) return;
+                settled = true;
+                if (blockedTimeout) {
+                    clearTimeout(blockedTimeout);
+                }
+                reject(error);
+            };
+
             deleteRequest.onsuccess = () => {
                 if (this.printLogs) {
                     Logger.debug(`Database deleted successfully`, {
@@ -675,19 +720,24 @@ class LocalSave {
                         version: deleteRequest.result,
                     });
                 }
-                resolve(true);
+                settleResolve();
             };
             deleteRequest.onerror = () => {
                 if (this.printLogs) {
                     Logger.error(`Error deleting database [dbName:${this.dbName}]`);
                 }
-                reject(new LocalSaveError(deleteRequest.error?.message ?? 'Error deleting database'));
+                settleReject(new LocalSaveError(deleteRequest.error?.message ?? 'Error deleting database'));
             };
             deleteRequest.onblocked = () => {
                 if (this.printLogs) {
-                    Logger.error(`Deleting database is blocked by an open connection [dbName:${this.dbName}]`);
+                    Logger.warn(`Deleting database is blocked by an open connection [dbName:${this.dbName}]`);
                 }
-                reject(new LocalSaveError('Deleting database is blocked by an open connection'));
+                if (blockedTimeout || settled) return;
+                blockedTimeout = setTimeout(() => {
+                    settleReject(
+                        new LocalSaveError('Deleting database timed out because it is blocked by open connections'),
+                    );
+                }, this.blockedTimeoutThreshold);
             };
         });
     }
@@ -695,6 +745,7 @@ class LocalSave {
 export type DBName = string;
 export type EncryptionKey = string;
 export type Category = string;
+export type PositiveNumber = number;
 export interface DBItem {
     timestamp: number;
     data: unknown;
@@ -729,7 +780,13 @@ export interface Config {
      *
      * @default '30' days
      */
-    expiryThreshold?: number;
+    expiryThreshold?: PositiveNumber;
+    /**
+     * The time in milliseconds to wait before failing blocked IndexedDB open/delete requests.
+     *
+     * @default 10000
+     */
+    blockedTimeoutThreshold?: PositiveNumber;
     /**
      * Whether to clear all data for a category if an error occurs while decrypting data
      * Most likely reason of error is due to an incorrect encryption key
