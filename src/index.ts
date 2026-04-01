@@ -43,6 +43,30 @@ class LocalSave {
     private openDB(version?: number) {
         return new Promise<IDBDatabase>((resolve, reject) => {
             const openRequest = indexedDB.open(this.dbName, version);
+            let settled = false;
+            let blockedTimeout: ReturnType<typeof setTimeout> | undefined;
+
+            const settleResolve = (db: IDBDatabase) => {
+                if (settled) {
+                    db.close();
+                    return;
+                }
+                settled = true;
+                if (blockedTimeout) {
+                    clearTimeout(blockedTimeout);
+                }
+                resolve(db);
+            };
+
+            const settleReject = (error: LocalSaveError) => {
+                if (settled) return;
+                settled = true;
+                if (blockedTimeout) {
+                    clearTimeout(blockedTimeout);
+                }
+                reject(error);
+            };
+
             openRequest.onupgradeneeded = () => {
                 const db = openRequest.result;
                 if (this.printLogs) {
@@ -63,19 +87,37 @@ class LocalSave {
                 }
             };
             openRequest.onsuccess = () => {
+                const db = openRequest.result;
+                db.onversionchange = () => {
+                    if (this.printLogs) {
+                        Logger.warn(`Closing stale database connection on version change [dbName:${this.dbName}]`);
+                    }
+                    db.close();
+                };
                 if (this.printLogs) {
                     Logger.debug(`Database opened successfully`, {
                         dbName: this.dbName,
-                        version: openRequest.result.version,
+                        version: db.version,
                     });
                 }
-                return resolve(openRequest.result);
+                settleResolve(db);
             };
             openRequest.onerror = () => {
                 if (this.printLogs) {
                     Logger.error(`LocalSaveError opening database [dbName:${this.dbName}]`, openRequest.error);
                 }
-                return reject(new LocalSaveError(openRequest.error?.message ?? 'Error opening database'));
+                settleReject(new LocalSaveError(openRequest.error?.message ?? 'Error opening database'));
+            };
+            openRequest.onblocked = () => {
+                if (this.printLogs) {
+                    Logger.warn(`Opening database is blocked by other open connections [dbName:${this.dbName}]`);
+                }
+                if (blockedTimeout || settled) return;
+                blockedTimeout = setTimeout(() => {
+                    settleReject(
+                        new LocalSaveError('Opening database timed out because it is blocked by open connections'),
+                    );
+                }, 5 * 1000);
             };
         });
     }
@@ -89,13 +131,17 @@ class LocalSave {
      */
     private async listStores() {
         const db = await this.openDB();
-        const stores = Array.from(db.objectStoreNames);
-        if (this.printLogs) {
-            Logger.debug(`Object stores listed successfully`, {
-                stores,
-            });
+        try {
+            const stores = Array.from(db.objectStoreNames);
+            if (this.printLogs) {
+                Logger.debug(`Object stores listed successfully`, {
+                    stores,
+                });
+            }
+            return stores;
+        } finally {
+            db.close();
         }
-        return stores;
     }
 
     /**
@@ -130,11 +176,22 @@ class LocalSave {
             db.close();
             db = await this.openDB(currVersion + 1);
         } else if (!db.objectStoreNames.contains(category)) {
+            const dbVersion = db.version;
+            db.close();
             throw new LocalSaveError(
-                `Requested object store not found in current database version [category:${category} / dbName:${this.dbName} / version:${db.version}].`,
+                `Requested object store not found in current database version [category:${category} / dbName:${this.dbName} / version:${dbVersion}].`,
             );
         }
         const transaction = db.transaction(category, mode);
+        transaction.oncomplete = () => {
+            db.close();
+        };
+        transaction.onerror = () => {
+            db.close();
+        };
+        transaction.onabort = () => {
+            db.close();
+        };
         const store = transaction.objectStore(category);
         if (this.printLogs) {
             Logger.debug(`Object store retrieved from database`, {
@@ -424,25 +481,30 @@ class LocalSave {
             });
         }
         const store = await this.getStore(category);
-        return new Promise<string[]>((resolve, reject) => {
-            const keysRequest = store.getAllKeys();
-            keysRequest.onsuccess = () => {
-                const keys = keysRequest.result as string[];
-                if (this.printLogs) {
-                    Logger.debug(`Keys listed successfully for category`, {
-                        category,
-                        keys,
-                    });
-                }
-                resolve(keys);
-            };
-            keysRequest.onerror = () => {
-                if (this.printLogs) {
-                    Logger.error(`Error listing keys for category [category:${category}]`, keysRequest.error);
-                }
-                reject(new LocalSaveError(keysRequest.error?.message ?? 'Error listing keys'));
-            };
-        });
+        const db = store.transaction.db;
+        try {
+            return await new Promise<string[]>((resolve, reject) => {
+                const keysRequest = store.getAllKeys();
+                keysRequest.onsuccess = () => {
+                    const keys = keysRequest.result as string[];
+                    if (this.printLogs) {
+                        Logger.debug(`Keys listed successfully for category`, {
+                            category,
+                            keys,
+                        });
+                    }
+                    resolve(keys);
+                };
+                keysRequest.onerror = () => {
+                    if (this.printLogs) {
+                        Logger.error(`Error listing keys for category [category:${category}]`, keysRequest.error);
+                    }
+                    reject(new LocalSaveError(keysRequest.error?.message ?? 'Error listing keys'));
+                };
+            });
+        } finally {
+            db.close();
+        }
     }
 
     /**
@@ -544,6 +606,7 @@ class LocalSave {
         const checkDate = Date.now() - days * 86400000;
         for (const category of this.categories) {
             const store = await this.getStore(category);
+            const db = store.transaction.db;
             try {
                 const keys = await new Promise<IDBValidKey[]>((resolve, reject) => {
                     const keysRequest = store.getAllKeys();
@@ -585,6 +648,8 @@ class LocalSave {
                     Logger.error(`Expiring data older than '${days}' days failed`, error);
                 }
                 throw error;
+            } finally {
+                db.close();
             }
         }
         return true;
@@ -617,6 +682,12 @@ class LocalSave {
                     Logger.error(`Error deleting database [dbName:${this.dbName}]`);
                 }
                 reject(new LocalSaveError(deleteRequest.error?.message ?? 'Error deleting database'));
+            };
+            deleteRequest.onblocked = () => {
+                if (this.printLogs) {
+                    Logger.error(`Deleting database is blocked by an open connection [dbName:${this.dbName}]`);
+                }
+                reject(new LocalSaveError('Deleting database is blocked by an open connection'));
             };
         });
     }
