@@ -718,7 +718,6 @@ class LocalSave {
                 if (this.printLogs) {
                     Logger.debug(`Database deleted successfully`, {
                         dbName: this.dbName,
-                        version: deleteRequest.result,
                     });
                 }
                 settleResolve();
@@ -779,7 +778,7 @@ export interface Config {
     /**
      * The number of days to use as the threshold for expiring data
      *
-     * @default '30' days
+        * @default 30
      */
     expiryThreshold?: PositiveNumber;
     /**
