@@ -15,8 +15,7 @@ describe('LocalSave - No encryption key', () => {
                 data: data,
             }),
         );
-        // TODO: Uncomment destroy calls after fixing #6
-        // await localSave.destroy();
+        await localSave.destroy();
         debugLog('>> End of test for LocalSave set and get methods without encryption key <<');
     });
     it('should list keys that were created earlier', async () => {
@@ -28,8 +27,7 @@ describe('LocalSave - No encryption key', () => {
         debugLog(`> Expected keys: ["firstKey", "secondKey"]\nFetched keys: ${JSON.stringify(keys)}`);
         expect(keys).toEqual(expect.arrayContaining(['firstKey', 'secondKey']));
         expect(keys).toHaveLength(2);
-        // TODO: Uncomment destroy calls after fixing #6
-        // await localSave.destroy();
+        await localSave.destroy();
         debugLog('>> End of test for LocalSave listKeys method without encryption key <<');
     });
     it("should fail if trying to retrieve data that doesn't exist", async () => {
@@ -38,8 +36,7 @@ describe('LocalSave - No encryption key', () => {
         const retrievedData = await localSave.get('userData', 'key');
         expect(retrievedData).toBeNull();
         debugLog(`> Expected: null\nActual: ${JSON.stringify(retrievedData)}`);
-        // TODO: Uncomment destroy calls after fixing #6
-        // await localSave.destroy();
+        await localSave.destroy();
         debugLog('>> End of test for LocalSave get method for non-existent key without encryption key <<');
     });
 });
@@ -61,8 +58,7 @@ describe('LocalSave - With encryption key', () => {
                 data,
             }),
         );
-        // TODO: Uncomment destroy calls after fixing #6
-        // await localSave.destroy();
+        await localSave.destroy();
         debugLog('>> End of test for LocalSave set and get methods with encryption key <<');
     });
     it('should list keys that were created earlier', async () => {
@@ -78,8 +74,7 @@ describe('LocalSave - With encryption key', () => {
         expect(keys).toBeDefined();
         expect(keys).toEqual(expect.arrayContaining(['encryptedFirstKey', 'encryptedSecondKey']));
         expect(keys).toHaveLength(2);
-        // TODO: Uncomment destroy calls after fixing #6
-        // await localSave.destroy();
+        await localSave.destroy();
         debugLog('>> End of test for LocalSave listKeys method with encryption key <<');
     });
     it("should fail if trying to retrieve data that doesn't exist", async () => {
@@ -91,8 +86,7 @@ describe('LocalSave - With encryption key', () => {
         const retrievedData = await localSave.get('userData', 'missingEncryptedKey');
         debugLog(`> Expected: null\nActual: ${JSON.stringify(retrievedData)}`);
         expect(retrievedData).toEqual(null);
-        // TODO: Uncomment destroy calls after fixing #6
-        // await localSave.destroy();
+        await localSave.destroy();
         debugLog('>> End of test for LocalSave get method for non-existent key with encryption key <<');
     });
     it('should fail to retrieve data with a wrong encryption key', async () => {
@@ -113,9 +107,8 @@ describe('LocalSave - With encryption key', () => {
         await writerLocalSave.set('userData', 'wrongKeyCase', { secret: 'sensitive' });
         await expect(readerLocalSave.get('userData', 'wrongKeyCase')).rejects.toThrow('Data decryption failed');
         await writerLocalSave.clear('userData');
-        // TODO: Uncomment destroy calls after fixing #6
-        // await writerLocalSave.destroy();
-        // await readerLocalSave.destroy();
+        await writerLocalSave.destroy();
+        await readerLocalSave.destroy();
         debugLog('>> End of test for LocalSave get method with wrong encryption key <<');
     });
     it('should clear data on decryption error when clearOnDecryptError is true', async () => {
@@ -138,9 +131,8 @@ describe('LocalSave - With encryption key', () => {
         const keysAfterError = await writerLocalSave.listKeys('userData');
         debugLog(`> Expected keys after decryption error: []\nActual keys: ${JSON.stringify(keysAfterError)}`);
         expect(keysAfterError).toEqual([]);
-        // TODO: Uncomment destroy calls after fixing #6
-        // await writerLocalSave.destroy();
-        // await readerLocalSave.destroy();
+        await writerLocalSave.destroy();
+        await readerLocalSave.destroy();
         debugLog(
             '>> End of test for LocalSave get method with wrong encryption key and clearOnDecryptError set to true <<',
         );

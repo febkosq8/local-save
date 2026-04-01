@@ -28,8 +28,7 @@ export default defineConfig({
         },
         silent: true,
         ui: true,
-        isolated: true,
-        testTimeout: 12 * 60 * 1000,
+        testTimeout: 30 * 1000,
         browser: {
             provider: playwright(),
             enabled: true,

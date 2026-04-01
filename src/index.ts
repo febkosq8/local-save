@@ -126,12 +126,16 @@ class LocalSave {
             };
             openRequest.onblocked = () => {
                 if (this.printLogs) {
-                    Logger.warn(`Opening database is blocked by other open connections [dbName:${this.dbName}]`);
+                    Logger.warn(
+                        `Opening database is currently blocked by an existing open connection. Waiting for ${this.blockedTimeoutThreshold} ms before timing out [dbName:${this.dbName}]`,
+                    );
                 }
                 if (blockedTimeout || settled) return;
                 blockedTimeout = setTimeout(() => {
                     settleReject(
-                        new LocalSaveError('Opening database timed out because it is blocked by open connections'),
+                        new LocalSaveError(
+                            `Opening database timed out after ${this.blockedTimeoutThreshold} ms because it is blocked by open connections`,
+                        ),
                     );
                 }, this.blockedTimeoutThreshold);
             };
@@ -730,12 +734,16 @@ class LocalSave {
             };
             deleteRequest.onblocked = () => {
                 if (this.printLogs) {
-                    Logger.warn(`Deleting database is blocked by an open connection [dbName:${this.dbName}]`);
+                    Logger.warn(
+                        `Deleting database is currently blocked by an open connection. Waiting for ${this.blockedTimeoutThreshold} ms before timing out [dbName:${this.dbName}]`,
+                    );
                 }
                 if (blockedTimeout || settled) return;
                 blockedTimeout = setTimeout(() => {
                     settleReject(
-                        new LocalSaveError('Deleting database timed out because it is blocked by open connections'),
+                        new LocalSaveError(
+                            `Deleting database timed out after ${this.blockedTimeoutThreshold} ms because it is blocked by open connections`,
+                        ),
                     );
                 }, this.blockedTimeoutThreshold);
             };
@@ -778,7 +786,7 @@ export interface Config {
     /**
      * The number of days to use as the threshold for expiring data
      *
-        * @default 30
+     * @default 30
      */
     expiryThreshold?: PositiveNumber;
     /**
