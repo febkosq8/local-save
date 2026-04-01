@@ -27,10 +27,13 @@ export default defineConfig({
             reporter: ['text', 'json', 'html'],
         },
         silent: true,
-        testTimeout: 30000,
+        ui: true,
+        isolated: true,
+        testTimeout: 12 * 60 * 1000,
         browser: {
             provider: playwright(),
             enabled: true,
+            headless: true,
             screenshotFailures: false,
             instances: [
                 {
