@@ -1,0 +1,24 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "npm: deprecate version",
+            "type": "shell",
+            "command": "npm",
+            "args": [
+                "deprecate",
+                "@febkosq8/local-save@${input:deprecateVersion}",
+                "This version is deprecated. Please upgrade to a newer release."
+            ],
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "deprecateVersion",
+            "type": "promptString",
+            "description": "Version to deprecate (example: 0.6.1)",
+            "default": "0.6.1"
+        }
+    ]
+}
