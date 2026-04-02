@@ -1,3 +1,4 @@
+import LocalSaveConfigError from '@local-save/utils/errors/LocalSaveConfigError';
 import LocalSaveEncryptionKeyError from '@local-save/utils/errors/LocalSaveEncryptionKeyError';
 import LocalSaveError from '@local-save/utils/errors/LocalSaveError';
 import Logger from '@local-save/utils/logger';
@@ -22,27 +23,23 @@ class LocalSave {
         this.categories = config?.categories ?? this.categories;
         this.clearOnDecryptError = config?.clearOnDecryptError ?? this.clearOnDecryptError;
         this.expiryThreshold = config?.expiryThreshold ?? this.expiryThreshold;
-        if (
+        this.blockedTimeoutThreshold = config?.blockedTimeoutThreshold ?? this.blockedTimeoutThreshold;
+        this.printLogs = config?.printLogs ?? this.printLogs;
+
+        if (!!config?.encryptionKey && !isValidEncryptionKey(config?.encryptionKey)) {
+            throw new LocalSaveConfigError('Encryption key should be of length 16, 24, or 32 characters');
+        } else if (
             typeof this.expiryThreshold !== 'number' ||
             !Number.isFinite(this.expiryThreshold) ||
             this.expiryThreshold <= 0
         ) {
-            throw new LocalSaveError('expiryThreshold should be a positive number');
-        }
-        this.blockedTimeoutThreshold = config?.blockedTimeoutThreshold ?? this.blockedTimeoutThreshold;
-        if (
+            throw new LocalSaveConfigError('expiryThreshold should be a positive number');
+        } else if (
             typeof this.blockedTimeoutThreshold !== 'number' ||
             !Number.isFinite(this.blockedTimeoutThreshold) ||
             this.blockedTimeoutThreshold <= 0
         ) {
-            throw new LocalSaveError('blockedTimeoutThreshold should be a positive number');
-        }
-        this.printLogs = config?.printLogs ?? this.printLogs;
-
-        if (!!config?.encryptionKey && !isValidEncryptionKey(config?.encryptionKey)) {
-            Logger.warn(`Encryption key should be of length 16, 24, or 32 characters`, {
-                keyLength: config.encryptionKey.length,
-            });
+            throw new LocalSaveConfigError('blockedTimeoutThreshold should be a positive number');
         }
     }
 
