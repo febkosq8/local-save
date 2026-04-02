@@ -2,15 +2,15 @@ import LocalSave from '@local-save/index';
 import { debugLog } from '@local-save/test/test-utils';
 import LocalSaveConfigError from '@local-save/utils/errors/LocalSaveConfigError';
 
-describe('LocalSave - Constructor', { tags: ['config'] }, ({ beforeEach, afterEach }) => {
+describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, afterEach }) => {
     beforeEach(({ task: { fullTestName } }) => {
         console.log(`>>> Starting run - [ ${fullTestName} ] <<<`);
-        vi.restoreAllMocks();
     });
     afterEach(({ task: { fullTestName } }) => {
         console.log(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
-    test('should use default configuration values', ({ expect }) => {
+
+    test('should use default configuration values', { tags: ['config'] }, ({ expect }) => {
         const localSave = new LocalSave();
         debugLog(`Validating property 'dbName'\nExpected: LocalSave\nActual: ${localSave.dbName}`);
         expect(localSave.dbName).toBe('LocalSave');
@@ -28,7 +28,7 @@ describe('LocalSave - Constructor', { tags: ['config'] }, ({ beforeEach, afterEa
         expect(localSave.printLogs).toBe(false);
     });
 
-    test('should apply provided configuration values', () => {
+    test('should apply provided configuration values', { tags: ['config'] }, ({ expect }) => {
         const localSave = new LocalSave({
             dbName: 'CustomDb',
             encryptionKey: '75Q1SDWH1B6KJIP6',
@@ -60,7 +60,7 @@ describe('LocalSave - Constructor', { tags: ['config'] }, ({ beforeEach, afterEa
         expect(localSave.printLogs).toBe(true);
     });
 
-    test('should not throw error when config values are valid', () => {
+    test('should not throw error when config values are valid', { tags: ['config'] }, ({ expect }) => {
         let thrownError: unknown;
         let localSave: LocalSave | undefined;
         try {
@@ -79,7 +79,7 @@ describe('LocalSave - Constructor', { tags: ['config'] }, ({ beforeEach, afterEa
         expect(localSave?.blockedTimeoutThreshold).toBe(20000);
     });
 
-    test('should throw error when encryption key length is invalid', () => {
+    test('should throw error when encryption key length is invalid', { tags: ['config'] }, ({ expect }) => {
         let thrownError: unknown;
 
         try {
@@ -98,7 +98,7 @@ describe('LocalSave - Constructor', { tags: ['config'] }, ({ beforeEach, afterEa
         }
     });
 
-    test('should throw error when expiryThreshold is not a positive number', () => {
+    test('should throw error when expiryThreshold is not a positive number', { tags: ['config'] }, ({ expect }) => {
         let thrownError: unknown;
         try {
             new LocalSave({
@@ -116,21 +116,25 @@ describe('LocalSave - Constructor', { tags: ['config'] }, ({ beforeEach, afterEa
         }
     });
 
-    test('should throw error when blockedTimeoutThreshold is not a positive number', () => {
-        let thrownError: unknown;
-        try {
-            new LocalSave({
-                blockedTimeoutThreshold: 0,
-            });
-        } catch (error) {
-            thrownError = error;
-        }
-        debugLog(
-            `Validating error\nExpected: LocalSaveConfigError: blockedTimeoutThreshold should be a positive number\nActual: ${String(thrownError)}`,
-        );
-        expect(thrownError).toBeInstanceOf(LocalSaveConfigError);
-        if (thrownError instanceof LocalSaveConfigError) {
-            expect(thrownError.message).toBe('blockedTimeoutThreshold should be a positive number');
-        }
-    });
+    test(
+        'should throw error when blockedTimeoutThreshold is not a positive number',
+        { tags: ['config'] },
+        ({ expect }) => {
+            let thrownError: unknown;
+            try {
+                new LocalSave({
+                    blockedTimeoutThreshold: 0,
+                });
+            } catch (error) {
+                thrownError = error;
+            }
+            debugLog(
+                `Validating error\nExpected: LocalSaveConfigError: blockedTimeoutThreshold should be a positive number\nActual: ${String(thrownError)}`,
+            );
+            expect(thrownError).toBeInstanceOf(LocalSaveConfigError);
+            if (thrownError instanceof LocalSaveConfigError) {
+                expect(thrownError.message).toBe('blockedTimeoutThreshold should be a positive number');
+            }
+        },
+    );
 });
