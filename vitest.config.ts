@@ -19,6 +19,24 @@ export default defineConfig({
     },
     test: {
         include: ['src/test/**/*.test.ts'],
+        tags: [
+            {
+                name: 'config',
+                description: 'Tests for constructor and configuration behavior',
+            },
+            {
+                name: 'instance',
+                description: 'Tests for LocalSave instance methods',
+            },
+            {
+                name: 'utils',
+                description: 'Tests related to utility functions',
+            },
+            {
+                name: 'integration',
+                description: 'Integration tests that may involve multiple functions or components working together',
+            },
+        ],
         name: 'local-save',
         globals: true,
         environment: 'jsdom',

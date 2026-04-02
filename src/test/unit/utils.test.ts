@@ -9,8 +9,8 @@ import {
     isValidEncryptionKey,
 } from '@local-save/utils/utils';
 
-describe('Utils - isEncryptionKeyDefined', () => {
-    it('should return false when key is undefined', () => {
+describe('Utils - isEncryptionKeyDefined', { tags: ['utils'] }, () => {
+    test('should return false when key is undefined', () => {
         debugLog(`>> Testing isEncryptionKeyDefined with 'undefined' key`);
         const result = isEncryptionKeyDefined(undefined);
         debugLog(`> Expected: false\nActual: ${result}`);
@@ -18,7 +18,7 @@ describe('Utils - isEncryptionKeyDefined', () => {
         debugLog(`>> End of test for isEncryptionKeyDefined with 'undefined' key <<`);
     });
 
-    it('should return false when key is null', () => {
+    test('should return false when key is null', () => {
         debugLog(">> Testing isEncryptionKeyDefined with 'null' key");
         const result = isEncryptionKeyDefined(null);
         debugLog(`> Expected: false\nActual: ${result}`);
@@ -26,7 +26,7 @@ describe('Utils - isEncryptionKeyDefined', () => {
         debugLog(`>> End of test for isEncryptionKeyDefined with 'null' key <<`);
     });
 
-    it('should return false when key is an empty string', () => {
+    test('should return false when key is an empty string', () => {
         debugLog(">> Testing isEncryptionKeyDefined with '<empty string>' key");
         const result = isEncryptionKeyDefined('');
         debugLog(`> Expected: false\nActual: ${result}`);
@@ -34,7 +34,7 @@ describe('Utils - isEncryptionKeyDefined', () => {
         debugLog(`>> End of test for isEncryptionKeyDefined with '<empty string>' key <<`);
     });
 
-    it('should return true when key is a non-empty string', () => {
+    test('should return true when key is a non-empty string', () => {
         debugLog(">> Testing isEncryptionKeyDefined with '<non-empty string>' key");
         const result = isEncryptionKeyDefined('abc');
         debugLog(`> Expected: true\nActual: ${result}`);
@@ -42,8 +42,8 @@ describe('Utils - isEncryptionKeyDefined', () => {
         debugLog(`>> End of test for isEncryptionKeyDefined with '<non-empty string>' key <<`);
     });
 });
-describe('Utils - isValidEncryptionKey', () => {
-    it('should return true if the key length is 16', () => {
+describe('Utils - isValidEncryptionKey', { tags: ['utils'] }, () => {
+    test('should return true if the key length is 16', () => {
         debugLog('>> Testing isValidEncryptionKey with valid key lengths of 16 characters');
         const key = 'RDN3TLL4D7M5Q59S';
         const result = isValidEncryptionKey(key);
@@ -52,7 +52,7 @@ describe('Utils - isValidEncryptionKey', () => {
         debugLog('>> End of test for isValidEncryptionKey with valid key lengths of 16 characters <<');
     });
 
-    it('should return true when key length is 24', () => {
+    test('should return true when key length is 24', () => {
         debugLog('>> Testing isValidEncryptionKey with valid key lengths of 24 characters');
         const key = 'GGLE0LX78HY50AT2I5NAZT2Q';
         const result = isValidEncryptionKey(key);
@@ -61,7 +61,7 @@ describe('Utils - isValidEncryptionKey', () => {
         debugLog('>> End of test for isValidEncryptionKey with valid key lengths of 24 characters <<');
     });
 
-    it('should return true when key length is 32', () => {
+    test('should return true when key length is 32', () => {
         debugLog('>> Testing isValidEncryptionKey with valid key lengths of 32 characters');
         const key = '8H2HDLU3OCF2M77LFHOD4YFH6ZKLWEOE';
         const result = isValidEncryptionKey(key);
@@ -79,8 +79,8 @@ describe('Utils - isValidEncryptionKey', () => {
         debugLog(`>> End of test for isValidEncryptionKey with invalid key length of ${length} characters <<`);
     });
 });
-describe('Utils - arrayBuffer <---> Base64', () => {
-    it('should convert an ArrayBuffer to a Base64 encoded string', () => {
+describe('Utils - arrayBuffer <---> Base64', { tags: ['utils'] }, () => {
+    test('should convert an ArrayBuffer to a Base64 encoded string', () => {
         debugLog('>> Testing arrayBufferToBase64 with a 16-byte ArrayBuffer');
         const buffer = new ArrayBuffer(16);
         const base64 = arrayBufferToBase64(buffer);
@@ -88,7 +88,7 @@ describe('Utils - arrayBuffer <---> Base64', () => {
         expect(base64).toBe('AAAAAAAAAAAAAAAAAAAAAA==');
         debugLog('>> End of test for arrayBufferToBase64 with a 16-byte ArrayBuffer <<');
     });
-    it('should convert a Base64 encoded string to an ArrayBuffer', () => {
+    test('should convert a Base64 encoded string to an ArrayBuffer', () => {
         debugLog('>> Testing base64ToArrayBuffer with a valid Base64 string');
         const base64 = 'AAAAAAAAAAAAAAAAAAAAAA==';
         const buffer = base64ToArrayBuffer(base64);
@@ -98,7 +98,7 @@ describe('Utils - arrayBuffer <---> Base64', () => {
         expect(buffer.byteLength).toBe(16);
         debugLog('>> End of test for base64ToArrayBuffer with a valid Base64 string <<');
     });
-    it('should preserve bytes when converting ArrayBuffer to Base64 and back', () => {
+    test('should preserve bytes when converting ArrayBuffer to Base64 and back', () => {
         debugLog('>> Testing that converting an ArrayBuffer to Base64 and back preserves the original bytes');
         const original = new Uint8Array([0, 1, 2, 127, 128, 254, 255]);
         const base64 = arrayBufferToBase64(original.buffer);
@@ -116,8 +116,8 @@ describe('Utils - arrayBuffer <---> Base64', () => {
     });
 });
 
-describe('Utils - Errors', () => {
-    it('should set LocalSaveError name and message', () => {
+describe('Utils - Errors', { tags: ['utils'] }, () => {
+    test('should set LocalSaveError name and message', () => {
         debugLog('>> Testing LocalSaveError class instantiation and properties');
         const error = new LocalSaveError('test message');
         debugLog(`> Expected name: LocalSaveError\nActual name: ${error.name}`);
@@ -129,7 +129,7 @@ describe('Utils - Errors', () => {
         debugLog('>> End of test for LocalSaveError class instantiation and properties <<');
     });
 
-    it('should set LocalSaveEncryptionKeyError name and message', () => {
+    test('should set LocalSaveEncryptionKeyError name and message', () => {
         debugLog('>> Testing LocalSaveEncryptionKeyError class instantiation and properties');
         const error = new LocalSaveEncryptionKeyError('test message');
         debugLog(`> Expected name: LocalSaveEncryptionKeyError\nActual name: ${error.name}`);
@@ -141,7 +141,7 @@ describe('Utils - Errors', () => {
         debugLog('>> End of test for LocalSaveEncryptionKeyError class instantiation and properties <<');
     });
 
-    it('should preserve cause when provided in options', () => {
+    test('should preserve cause when provided in options', () => {
         debugLog('>> Testing that LocalSaveError preserves the cause when provided in options');
         const cause = new Error('root cause');
         const error = new LocalSaveError('test message', { cause });
@@ -152,8 +152,8 @@ describe('Utils - Errors', () => {
     });
 });
 
-describe('Utils - Logger', () => {
-    it('should throw an error if Logger class is instantiated', () => {
+describe('Utils - Logger', { tags: ['utils'] }, () => {
+    test('should throw an error if Logger class is instantiated', () => {
         debugLog('>> Testing that instantiating Logger class throws an error');
         expect(() => {
             new Logger();
