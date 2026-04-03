@@ -6,7 +6,7 @@
  * @returns `true` if the key is defined.
  */
 export function isEncryptionKeyDefined(key: string | undefined | null) {
-    return !!key && key != '' && key.length > 0;
+    return !!key && typeof key === 'string' && key != '' && key.length > 0;
 }
 
 /**
