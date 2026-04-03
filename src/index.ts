@@ -659,70 +659,76 @@ class LocalSave {
         for (const category of this.categories) {
             const store = await this.getStore(category);
             try {
-                const entries = await new Promise<Array<{ key: IDBValidKey; value: DBItemEncryptedBase64 | DBItem }>>(
-                    (resolve, reject) => {
-                        const cursorRequest = store.openCursor();
-                        const collectedEntries: Array<{ key: IDBValidKey; value: DBItemEncryptedBase64 | DBItem }> = [];
-                        cursorRequest.onsuccess = () => {
-                            const cursor = cursorRequest.result;
-                            if (!cursor) {
-                                if (this.printLogs) {
-                                    Logger.debug(`Entries scanned successfully for expiring data`, {
-                                        category,
-                                        entryCount: collectedEntries.length,
-                                    });
-                                }
-                                resolve(collectedEntries);
-                                return;
-                            }
-                            collectedEntries.push({
-                                key: cursor.key,
-                                value: cursor.value as DBItemEncryptedBase64 | DBItem,
-                            });
-                            cursor.continue();
-                        };
-                        cursorRequest.onerror = () => {
-                            if (this.printLogs) {
-                                Logger.error(
-                                    `LocalSaveError scanning entries for expiring data [category:${category}]`,
-                                    cursorRequest.error,
-                                );
-                            }
-                            reject(new LocalSaveError(cursorRequest.error?.message ?? 'Error scanning entries'));
-                        };
-                    },
-                );
-
                 const keysToDelete: string[] = [];
-                for (const entry of entries) {
-                    if (typeof entry.key !== 'string') continue;
+                const decryptTasks: Promise<void>[] = [];
+                let scannedCount = 0;
 
-                    let item: DBItem;
-                    if (typeof entry.value === 'string') {
-                        try {
-                            item = await this.decryptData(entry.value);
-                        } catch (error) {
+                await new Promise<void>((resolve, reject) => {
+                    const cursorRequest = store.openCursor();
+
+                    cursorRequest.onsuccess = () => {
+                        const cursor = cursorRequest.result;
+                        if (!cursor) {
                             if (this.printLogs) {
-                                Logger.error(`Failed to decrypt data while expiring`, error);
+                                Logger.debug(`Entries scanned successfully for expiring data`, {
+                                    category,
+                                    entryCount: scannedCount,
+                                });
                             }
-                            if (this.clearOnDecryptError) {
-                                if (this.printLogs) {
-                                    Logger.error(
-                                        `Triggering clear for all data for category since decryption failed during expire`,
-                                    );
-                                }
-                                void this.clear(category);
-                            }
-                            throw new LocalSaveError(error instanceof Error ? error.message : 'Failed to decrypt data');
+                            resolve();
+                            return;
                         }
-                    } else {
-                        item = entry.value;
-                    }
 
-                    if (item.timestamp < checkDate) {
-                        keysToDelete.push(entry.key);
-                    }
-                }
+                        scannedCount += 1;
+                        if (typeof cursor.key === 'string') {
+                            const key = cursor.key;
+                            const value = cursor.value as DBItemEncryptedBase64 | DBItem;
+
+                            if (typeof value === 'string') {
+                                const decryptTask = (async () => {
+                                    try {
+                                        const item = await this.decryptData(value);
+                                        if (item.timestamp < checkDate) {
+                                            keysToDelete.push(key);
+                                        }
+                                    } catch (error) {
+                                        if (this.printLogs) {
+                                            Logger.error(`Failed to decrypt data while expiring`, error);
+                                        }
+                                        if (this.clearOnDecryptError) {
+                                            if (this.printLogs) {
+                                                Logger.error(
+                                                    `Triggering clear for all data for category since decryption failed during expire`,
+                                                );
+                                            }
+                                            void this.clear(category);
+                                        }
+                                        throw new LocalSaveError(
+                                            error instanceof Error ? error.message : 'Failed to decrypt data',
+                                        );
+                                    }
+                                })();
+                                decryptTasks.push(decryptTask);
+                            } else if (value.timestamp < checkDate) {
+                                keysToDelete.push(key);
+                            }
+                        }
+
+                        cursor.continue();
+                    };
+
+                    cursorRequest.onerror = () => {
+                        if (this.printLogs) {
+                            Logger.error(
+                                `LocalSaveError scanning entries for expiring data [category:${category}]`,
+                                cursorRequest.error,
+                            );
+                        }
+                        reject(new LocalSaveError(cursorRequest.error?.message ?? 'Error scanning entries'));
+                    };
+                });
+
+                await Promise.all(decryptTasks);
 
                 if (keysToDelete.length === 0) {
                     continue;
@@ -730,7 +736,6 @@ class LocalSave {
 
                 const writeStore = await this.getStore(category, 'readwrite');
                 await new Promise<void>((resolve, reject) => {
-                    let pending = keysToDelete.length;
                     let settled = false;
 
                     const settleReject = (error: LocalSaveError) => {
@@ -739,21 +744,41 @@ class LocalSave {
                         reject(error);
                     };
 
+                    const settleTx = writeStore.transaction;
+
+                    settleTx.oncomplete = () => {
+                        if (settled) return;
+                        settled = true;
+                        if (this.printLogs) {
+                            Logger.debug(`Expired data removed successfully`, {
+                                category,
+                                removedCount: keysToDelete.length,
+                            });
+                        }
+                        resolve();
+                    };
+
+                    settleTx.onerror = () => {
+                        if (this.printLogs) {
+                            Logger.error(
+                                `LocalSaveError during transaction commit while removing expired data [category:${category}]`,
+                                settleTx.error,
+                            );
+                        }
+                        settleReject(
+                            new LocalSaveError(settleTx.error?.message ?? 'Error committing removal transaction'),
+                        );
+                    };
+
+                    settleTx.onabort = () => {
+                        if (this.printLogs) {
+                            Logger.warn(`Transaction aborted while removing expired data [category:${category}]`);
+                        }
+                        settleReject(new LocalSaveError('Transaction aborted while removing expired data'));
+                    };
+
                     for (const key of keysToDelete) {
                         const deleteRequest = writeStore.delete(key);
-                        deleteRequest.onsuccess = () => {
-                            if (settled) return;
-                            pending -= 1;
-                            if (pending === 0) {
-                                if (this.printLogs) {
-                                    Logger.debug(`Expired data removed successfully`, {
-                                        category,
-                                        removedCount: keysToDelete.length,
-                                    });
-                                }
-                                resolve();
-                            }
-                        };
                         deleteRequest.onerror = () => {
                             if (this.printLogs) {
                                 Logger.error(
@@ -761,9 +786,6 @@ class LocalSave {
                                     deleteRequest.error,
                                 );
                             }
-                            settleReject(
-                                new LocalSaveError(deleteRequest.error?.message ?? 'Error removing expired data'),
-                            );
                         };
                     }
                 });
