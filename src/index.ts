@@ -559,7 +559,9 @@ class LocalSave {
                     if (this.printLogs) {
                         Logger.error(`LocalSaveError storing data [category:${category} / key:${itemKey}]`, error);
                     }
-                    return new LocalSaveError(error?.message ?? 'Error storing data');
+                    return new LocalSaveError(error?.message ?? 'Error storing data', {
+                        cause: error ?? undefined,
+                    });
                 },
                 onTransactionError: (error) => {
                     if (this.printLogs) {
@@ -568,7 +570,9 @@ class LocalSave {
                             error,
                         );
                     }
-                    return new LocalSaveError(error?.message ?? 'Error committing storage transaction');
+                    return new LocalSaveError(error?.message ?? 'Error committing storage transaction', {
+                        cause: error ?? undefined,
+                    });
                 },
                 onTransactionAbort: (error: DOMException | null) => {
                     if (this.printLogs) {
@@ -577,7 +581,9 @@ class LocalSave {
                             error,
                         );
                     }
-                    return new LocalSaveError(error?.message ?? 'Transaction aborted while storing data');
+                    return new LocalSaveError(error?.message ?? 'Transaction aborted while storing data', {
+                        cause: error ?? undefined,
+                    });
                 },
                 onTransactionComplete: () => {
                     if (this.printLogs) {
@@ -748,7 +754,9 @@ class LocalSave {
                 if (this.printLogs) {
                     Logger.error(`Failed to remove data from [category:${category} / key:${itemKey}]`, error);
                 }
-                return new LocalSaveError(error?.message ?? 'Error removing data');
+                return new LocalSaveError(error?.message ?? 'Error removing data', {
+                    cause: error ?? undefined,
+                });
             },
             onTransactionError: (error: DOMException | null) => {
                 if (this.printLogs) {
@@ -757,7 +765,9 @@ class LocalSave {
                         error,
                     );
                 }
-                return new LocalSaveError(error?.message ?? 'Error committing removal transaction');
+                return new LocalSaveError(error?.message ?? 'Error committing removal transaction', {
+                    cause: error ?? undefined,
+                });
             },
             onTransactionAbort: (error: DOMException | null) => {
                 if (this.printLogs) {
@@ -766,7 +776,9 @@ class LocalSave {
                         error,
                     );
                 }
-                return new LocalSaveError(error?.message ?? 'Transaction aborted while removing data');
+                return new LocalSaveError(error?.message ?? 'Transaction aborted while removing data', {
+                    cause: error ?? undefined,
+                });
             },
             onTransactionComplete: () => {
                 if (this.printLogs) {
@@ -803,7 +815,9 @@ class LocalSave {
                         error,
                     );
                 }
-                return new LocalSaveError(error?.message ?? 'Error clearing data');
+                return new LocalSaveError(error?.message ?? 'Error clearing data', {
+                    cause: error ?? undefined,
+                });
             },
             onTransactionError: (error) => {
                 if (this.printLogs) {
@@ -812,13 +826,17 @@ class LocalSave {
                         error,
                     );
                 }
-                return new LocalSaveError(error?.message ?? 'Error committing clear transaction');
+                return new LocalSaveError(error?.message ?? 'Error committing clear transaction', {
+                    cause: error ?? undefined,
+                });
             },
             onTransactionAbort: (error: DOMException | null) => {
                 if (this.printLogs) {
                     Logger.warn(`Transaction aborted while clearing data [category:${category}]`, error);
                 }
-                return new LocalSaveError(error?.message ?? 'Transaction aborted while clearing data');
+                return new LocalSaveError(error?.message ?? 'Transaction aborted while clearing data', {
+                    cause: error ?? undefined,
+                });
             },
             onTransactionComplete: () => {
                 if (this.printLogs) {
