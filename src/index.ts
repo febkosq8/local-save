@@ -240,7 +240,7 @@ class LocalSave {
      */
     private async getEncryptKey() {
         const sourceKey = this.encryptionKey;
-        if (typeof sourceKey !== 'string' || !isEncryptionKeyDefined(sourceKey)) {
+        if (!isEncryptionKeyDefined(sourceKey)) {
             throw new LocalSaveEncryptionKeyError(`Encryption key is not configured`);
         }
         if (!isValidEncryptionKey(sourceKey)) {
