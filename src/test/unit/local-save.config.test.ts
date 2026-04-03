@@ -7,6 +7,8 @@ describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, after
         debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
         debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 

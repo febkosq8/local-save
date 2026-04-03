@@ -15,6 +15,8 @@ describe('Utils - isEncryptionKeyDefined', { tags: ['utils'] }, ({ beforeEach, a
         debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
         debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
@@ -47,6 +49,8 @@ describe('Utils - isValidEncryptionKey', { tags: ['utils'] }, ({ beforeEach, aft
         debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
         debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
@@ -83,6 +87,8 @@ describe('Utils - ArrayBuffer and Base64 Conversion', { tags: ['utils'] }, ({ be
         debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
         debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
@@ -121,6 +127,8 @@ describe('Utils - Errors', { tags: ['utils'] }, ({ beforeEach, afterEach }) => {
         debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
         debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
@@ -168,6 +176,8 @@ describe('Utils - Logger', { tags: ['utils'] }, ({ beforeEach, afterEach }) => {
         debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
         debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 

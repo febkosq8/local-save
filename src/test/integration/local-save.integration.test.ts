@@ -12,6 +12,8 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
         debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
         debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 

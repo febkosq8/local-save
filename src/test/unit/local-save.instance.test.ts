@@ -12,6 +12,8 @@ describe('LocalSave - Instance', { tags: ['instance'] }, ({ beforeEach, afterEac
         debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
         debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
