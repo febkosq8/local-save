@@ -573,7 +573,18 @@ class LocalSave {
                             if (this.printLogs) {
                                 Logger.error(`Triggering clear for all data for category since decryption failed`);
                             }
-                            void this.clear(category);
+                            try {
+                                await this.clear(category);
+                            } catch (clearError) {
+                                if (this.printLogs) {
+                                    Logger.error(`Failed to clear data after decryption failure`, clearError);
+                                }
+                                return reject(
+                                    new LocalSaveError('Data decryption failed and category clearing failed', {
+                                        cause: clearError instanceof Error ? clearError : undefined,
+                                    }),
+                                );
+                            }
                         }
                         return reject(
                             new LocalSaveError(error instanceof Error ? error.message : 'Failed to decrypt data'),
