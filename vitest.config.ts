@@ -54,8 +54,7 @@ export default defineConfig({
         coverage: {
             reporter: ['text', 'json', 'html'],
         },
-        silent: true,
-        ui: true,
+        silent: !enableTestLogs,
         testTimeout: 30 * 1000,
         browser: {
             provider: playwright(),

@@ -5,7 +5,7 @@ import {
     debugLog,
     isDebugLogsEnabled,
     randomString,
-} from '@local-save/test/test-utils';
+} from '@local-save/test/setup';
 
 describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, afterEach }) => {
     beforeEach(({ task: { fullTestName } }) => {

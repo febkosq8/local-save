@@ -1,5 +1,5 @@
 import LocalSave from '@local-save/index';
-import { debugLog } from '@local-save/test/test-utils';
+import { debugLog } from '@local-save/test/setup';
 import LocalSaveConfigError from '@local-save/utils/errors/LocalSaveConfigError';
 
 describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, afterEach }) => {

@@ -1,4 +1,4 @@
-import { debugLog } from '@local-save/test/test-utils';
+import { debugLog } from '@local-save/test/setup';
 import LocalSaveConfigError from '@local-save/utils/errors/LocalSaveConfigError';
 import LocalSaveEncryptionKeyError from '@local-save/utils/errors/LocalSaveEncryptionKeyError';
 import LocalSaveError from '@local-save/utils/errors/LocalSaveError';
