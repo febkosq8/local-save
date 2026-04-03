@@ -429,7 +429,9 @@ class LocalSave {
             if (this.printLogs) {
                 Logger.error(`Data decryption failed`, error);
             }
-            throw new LocalSaveError(`Data decryption failed`);
+            throw new LocalSaveError(`Data decryption failed`, {
+                cause: error instanceof Error ? error : undefined,
+            });
         }
     }
 
