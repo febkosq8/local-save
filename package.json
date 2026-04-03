@@ -30,7 +30,10 @@
         "release:patch": "npm run build && npm version patch -m \"Release %s\" && git push --follow-tags && npm run push-npm",
         "release:minor": "npm run build && npm version minor -m \"Release %s\" && git push --follow-tags && npm run push-npm",
         "release:major": "npm run build && npm version major -m \"Release %s\" && git push --follow-tags && npm run push-npm",
-        "test": "vitest"
+        "test": "vitest --run",
+        "test:dev": "cross-env LOCAL_SAVE_TEST_LOGS=1 LOCAL_SAVE_DEBUG_LOGS=0 vitest --ui --watch",
+        "test:ui": "cross-env LOCAL_SAVE_TEST_LOGS=1 LOCAL_SAVE_DEBUG_LOGS=0 vitest --ui",
+        "test:logs": "cross-env LOCAL_SAVE_TEST_LOGS=1 LOCAL_SAVE_DEBUG_LOGS=0 vitest"
     },
     "keywords": [
         "IndexedDB",
@@ -55,17 +58,19 @@
         "@types/crypto-js": "4.2.2",
         "@vitest/browser-playwright": "4.1.2",
         "@vitest/ui": "4.1.2",
-        "esbuild": "0.27.4",
+        "cross-env": "10.1.0",
+        "esbuild": "0.28.0",
         "eslint": "10.1.0",
         "eslint-plugin-prettier": "5.5.5",
-        "globals": "^17.4.0",
+        "globals": "17.4.0",
         "jsdom": "29.0.1",
-        "playwright": "1.58.2",
+        "playwright": "1.59.1",
         "prettier": "3.8.1",
         "prettier-plugin-organize-imports": "4.3.0",
         "tsup": "8.5.1",
         "typescript": "6.0.2",
         "typescript-eslint": "8.58.0",
+        "vite": "8.0.3",
         "vitest": "4.1.2"
     }
 }
