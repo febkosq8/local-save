@@ -341,7 +341,8 @@ class LocalSave {
      * Generates a random 12-byte IV for each encryption.
      * Base64 encodes the IV and the encrypted data and returns the result as a string.
      *
-     * If no encryption key is configured, it returns the data as is.
+     * Requires an encryption key to be configured.
+     * If no encryption key is configured, this method throws.
      *
      * @internal
      *
@@ -390,7 +391,8 @@ class LocalSave {
 
     /**
      * Decrypts the provided data using the configured encryption key.
-     * If no encryption key is configured, it returns the data as is.
+     * Requires an encryption key to be configured.
+     * If no encryption key is configured, this method throws.
      *
      * @param encryptedBase64Data The data to decrypt, as a string.
      *
