@@ -464,6 +464,20 @@ class LocalSave {
             }
             const store = await this.getStore(category, 'readwrite');
             return new Promise<true>((resolve, reject) => {
+                let settled = false;
+
+                const settleResolve = () => {
+                    if (settled) return;
+                    settled = true;
+                    resolve(true);
+                };
+
+                const settleReject = (error: LocalSaveError) => {
+                    if (settled) return;
+                    settled = true;
+                    reject(error);
+                };
+
                 const putRequest = store.put(payload, itemKey);
                 putRequest.onsuccess = () => {
                     if (this.printLogs) {
@@ -472,7 +486,6 @@ class LocalSave {
                             itemKey,
                         });
                     }
-                    resolve(true);
                 };
                 putRequest.onerror = () => {
                     if (this.printLogs) {
@@ -481,8 +494,31 @@ class LocalSave {
                             putRequest.error,
                         );
                     }
-                    reject(new LocalSaveError(putRequest.error?.message ?? 'Error storing data'));
+                    settleReject(new LocalSaveError(putRequest.error?.message ?? 'Error storing data'));
                 };
+
+                store.transaction.addEventListener('complete', () => {
+                    settleResolve();
+                });
+
+                store.transaction.addEventListener('error', () => {
+                    if (this.printLogs) {
+                        Logger.error(
+                            `LocalSaveError during transaction commit while storing data [category:${category} / key:${itemKey}]`,
+                            store.transaction.error,
+                        );
+                    }
+                    settleReject(
+                        new LocalSaveError(store.transaction.error?.message ?? 'Error committing storage transaction'),
+                    );
+                });
+
+                store.transaction.addEventListener('abort', () => {
+                    if (this.printLogs) {
+                        Logger.warn(`Transaction aborted while storing data [category:${category} / key:${itemKey}]`);
+                    }
+                    settleReject(new LocalSaveError('Transaction aborted while storing data'));
+                });
             });
         } catch (error) {
             if (this.printLogs) {
@@ -627,6 +663,20 @@ class LocalSave {
         }
         const store = await this.getStore(category, 'readwrite');
         return new Promise<true>((resolve, reject) => {
+            let settled = false;
+
+            const settleResolve = () => {
+                if (settled) return;
+                settled = true;
+                resolve(true);
+            };
+
+            const settleReject = (error: LocalSaveError) => {
+                if (settled) return;
+                settled = true;
+                reject(error);
+            };
+
             const deleteRequest = store.delete(itemKey);
             deleteRequest.onsuccess = () => {
                 if (this.printLogs) {
@@ -635,7 +685,6 @@ class LocalSave {
                         itemKey,
                     });
                 }
-                return resolve(true);
             };
             deleteRequest.onerror = () => {
                 if (this.printLogs) {
@@ -644,8 +693,31 @@ class LocalSave {
                         deleteRequest.error,
                     );
                 }
-                return reject(new LocalSaveError(deleteRequest.error?.message ?? 'Error removing data'));
+                settleReject(new LocalSaveError(deleteRequest.error?.message ?? 'Error removing data'));
             };
+
+            store.transaction.addEventListener('complete', () => {
+                settleResolve();
+            });
+
+            store.transaction.addEventListener('error', () => {
+                if (this.printLogs) {
+                    Logger.error(
+                        `LocalSaveError during transaction commit while removing data [category:${category} / key:${itemKey}]`,
+                        store.transaction.error,
+                    );
+                }
+                settleReject(
+                    new LocalSaveError(store.transaction.error?.message ?? 'Error committing removal transaction'),
+                );
+            });
+
+            store.transaction.addEventListener('abort', () => {
+                if (this.printLogs) {
+                    Logger.warn(`Transaction aborted while removing data [category:${category} / key:${itemKey}]`);
+                }
+                settleReject(new LocalSaveError('Transaction aborted while removing data'));
+            });
         });
     }
 
@@ -664,6 +736,20 @@ class LocalSave {
         }
         const store = await this.getStore(category, 'readwrite');
         return new Promise<true>((resolve, reject) => {
+            let settled = false;
+
+            const settleResolve = () => {
+                if (settled) return;
+                settled = true;
+                resolve(true);
+            };
+
+            const settleReject = (error: LocalSaveError) => {
+                if (settled) return;
+                settled = true;
+                reject(error);
+            };
+
             const clearRequest = store.clear();
             clearRequest.onsuccess = () => {
                 if (this.printLogs) {
@@ -673,7 +759,6 @@ class LocalSave {
                         version: store.transaction.db.version,
                     });
                 }
-                return resolve(true);
             };
             clearRequest.onerror = () => {
                 if (this.printLogs) {
@@ -682,8 +767,31 @@ class LocalSave {
                         clearRequest.error,
                     );
                 }
-                return reject(new LocalSaveError(clearRequest.error?.message ?? 'Error clearing data'));
+                settleReject(new LocalSaveError(clearRequest.error?.message ?? 'Error clearing data'));
             };
+
+            store.transaction.addEventListener('complete', () => {
+                settleResolve();
+            });
+
+            store.transaction.addEventListener('error', () => {
+                if (this.printLogs) {
+                    Logger.error(
+                        `LocalSaveError during transaction commit while clearing data [category:${category} / dbName:${this.dbName} / version:${store.transaction.db.version}]`,
+                        store.transaction.error,
+                    );
+                }
+                settleReject(
+                    new LocalSaveError(store.transaction.error?.message ?? 'Error committing clear transaction'),
+                );
+            });
+
+            store.transaction.addEventListener('abort', () => {
+                if (this.printLogs) {
+                    Logger.warn(`Transaction aborted while clearing data [category:${category}]`);
+                }
+                settleReject(new LocalSaveError('Transaction aborted while clearing data'));
+            });
         });
     }
 
