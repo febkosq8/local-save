@@ -316,11 +316,12 @@ class LocalSave {
         transaction: IDBTransaction;
         onRequestError: (error: DOMException | null) => LocalSaveError;
         onTransactionError: (error: DOMException | null) => LocalSaveError;
-        onTransactionAbort: () => LocalSaveError;
+        onTransactionAbort: (error: DOMException | null) => LocalSaveError;
         onTransactionComplete?: () => void;
     }): Promise<true> {
         return new Promise<true>((resolve, reject) => {
             let settled = false;
+            let requestError: LocalSaveError | undefined;
 
             const settleResolve = () => {
                 if (settled) return;
@@ -335,13 +336,17 @@ class LocalSave {
             };
 
             request.onerror = () => {
-                settleReject(onRequestError(request.error));
+                requestError = onRequestError(request.error);
             };
 
             transaction.addEventListener(
                 'complete',
                 () => {
                     if (settled) return;
+                    if (requestError) {
+                        settleReject(requestError);
+                        return;
+                    }
                     onTransactionComplete?.();
                     settleResolve();
                 },
@@ -352,7 +357,7 @@ class LocalSave {
                 'error',
                 () => {
                     if (settled) return;
-                    settleReject(onTransactionError(transaction.error));
+                    settleReject(requestError ?? onTransactionError(transaction.error));
                 },
                 { once: true },
             );
@@ -361,7 +366,7 @@ class LocalSave {
                 'abort',
                 () => {
                     if (settled) return;
-                    settleReject(onTransactionAbort());
+                    settleReject(requestError ?? onTransactionAbort(transaction.error));
                 },
                 { once: true },
             );
@@ -561,11 +566,14 @@ class LocalSave {
                     }
                     return new LocalSaveError(error?.message ?? 'Error committing storage transaction');
                 },
-                onTransactionAbort: () => {
+                onTransactionAbort: (error: DOMException | null) => {
                     if (this.printLogs) {
-                        Logger.warn(`Transaction aborted while storing data [category:${category} / key:${itemKey}]`);
+                        Logger.warn(
+                            `Transaction aborted while storing data [category:${category} / key:${itemKey}]`,
+                            error,
+                        );
                     }
-                    return new LocalSaveError('Transaction aborted while storing data');
+                    return new LocalSaveError(error?.message ?? 'Transaction aborted while storing data');
                 },
                 onTransactionComplete: () => {
                     if (this.printLogs) {
@@ -747,11 +755,14 @@ class LocalSave {
                 }
                 return new LocalSaveError(error?.message ?? 'Error committing removal transaction');
             },
-            onTransactionAbort: () => {
+            onTransactionAbort: (error: DOMException | null) => {
                 if (this.printLogs) {
-                    Logger.warn(`Transaction aborted while removing data [category:${category} / key:${itemKey}]`);
+                    Logger.warn(
+                        `Transaction aborted while removing data [category:${category} / key:${itemKey}]`,
+                        error,
+                    );
                 }
-                return new LocalSaveError('Transaction aborted while removing data');
+                return new LocalSaveError(error?.message ?? 'Transaction aborted while removing data');
             },
             onTransactionComplete: () => {
                 if (this.printLogs) {
@@ -799,11 +810,11 @@ class LocalSave {
                 }
                 return new LocalSaveError(error?.message ?? 'Error committing clear transaction');
             },
-            onTransactionAbort: () => {
+            onTransactionAbort: (error: DOMException | null) => {
                 if (this.printLogs) {
-                    Logger.warn(`Transaction aborted while clearing data [category:${category}]`);
+                    Logger.warn(`Transaction aborted while clearing data [category:${category}]`, error);
                 }
-                return new LocalSaveError('Transaction aborted while clearing data');
+                return new LocalSaveError(error?.message ?? 'Transaction aborted while clearing data');
             },
             onTransactionComplete: () => {
                 if (this.printLogs) {
