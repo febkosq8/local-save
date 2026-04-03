@@ -633,11 +633,12 @@ class LocalSave {
     /**
      * Expires data older than the specified number of days.
      *
-     * This method iterates through all categories using IndexedDB cursor API to identify expired
-     * entries and then removes them in a dedicated write transaction for each category.
+     * For each category, this method performs a readonly cursor scan to identify candidate
+     * records, decrypts encrypted entries to inspect their timestamps, and then deletes the
+     * expired keys in a separate readwrite transaction.
      *
-     * Handles both encrypted (base64-encoded) and unencrypted data. If decryption fails during
-     * expiration and `clearOnDecryptError` is enabled, the entire category will be cleared.
+     * If decryption fails during expiration and `clearOnDecryptError` is enabled, the category
+     * is cleared before the error is rethrown.
      *
      * @param {number} [days=this.expiryThreshold] The number of days to use as the threshold for expiring data.
      * Defaults to expiryThreshold from config if not provided.
@@ -645,7 +646,6 @@ class LocalSave {
      * @returns A promise that resolves to `true` if the operation was successful.
      *
      * @throws {LocalSaveError} - Throws an error if there is an issue scanning entries, decrypting data, or removing expired items.
-     * @throws {LocalSaveError} - If decryption fails during expiration.
      */
     async expire(days: number = this.expiryThreshold): Promise<true> {
         if (this.printLogs) {
