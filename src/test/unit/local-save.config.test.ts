@@ -81,7 +81,6 @@ describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, after
 
     test('should throw error when encryption key length is invalid', { tags: ['config'] }, ({ expect }) => {
         let thrownError: unknown;
-
         try {
             new LocalSave({
                 encryptionKey: '75Q1SDWH1B6KJIP6RO5MPSFYF2V2CG',

@@ -31,7 +31,7 @@
         "release:minor": "npm run build && npm version minor -m \"Release %s\" && git push --follow-tags && npm run push-npm",
         "release:major": "npm run build && npm version major -m \"Release %s\" && git push --follow-tags && npm run push-npm",
         "test": "vitest --run",
-        "test:dev": "cross-env LOCAL_SAVE_TEST_LOGS=1 LOCAL_SAVE_DEBUG_LOGS=1 vitest --ui --watch",
+        "test:dev": "cross-env LOCAL_SAVE_TEST_LOGS=1 LOCAL_SAVE_DEBUG_LOGS=0 vitest --ui --watch",
         "test:ui": "cross-env LOCAL_SAVE_TEST_LOGS=1 LOCAL_SAVE_DEBUG_LOGS=0 vitest --ui",
         "test:logs": "cross-env LOCAL_SAVE_TEST_LOGS=1 LOCAL_SAVE_DEBUG_LOGS=0 vitest"
     },
