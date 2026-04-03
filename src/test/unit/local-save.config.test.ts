@@ -99,11 +99,33 @@ describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, after
             thrownError = error;
         }
         debugLog(
-            `Validating error\nExpected: LocalSaveConfigError: Encryption key should be of length 16, 24, or 32 characters\nActual: ${String(thrownError)}`,
+            `Validating error\nExpected: LocalSaveConfigError: Encryption key should not contain spaces and should be of length 16, 24, or 32 characters\nActual: ${String(thrownError)}`,
         );
         expect(thrownError).toBeInstanceOf(LocalSaveConfigError);
         if (thrownError instanceof LocalSaveConfigError) {
-            expect(thrownError.message).toBe('Encryption key should be of length 16, 24, or 32 characters');
+            expect(thrownError.message).toBe(
+                'Encryption key should not contain spaces and should be of length 16, 24, or 32 characters',
+            );
+        }
+    });
+
+    test('should throw error when encryption key contains spaces', { tags: ['config'] }, ({ expect }) => {
+        let thrownError: unknown;
+        try {
+            new LocalSave({
+                encryptionKey: '75Q1SDWH 1B6KJIP6',
+            });
+        } catch (error) {
+            thrownError = error;
+        }
+        debugLog(
+            `Validating error\nExpected: LocalSaveConfigError: Encryption key should not contain spaces and should be of length 16, 24, or 32 characters\nActual: ${String(thrownError)}`,
+        );
+        expect(thrownError).toBeInstanceOf(LocalSaveConfigError);
+        if (thrownError instanceof LocalSaveConfigError) {
+            expect(thrownError.message).toBe(
+                'Encryption key should not contain spaces and should be of length 16, 24, or 32 characters',
+            );
         }
     });
 

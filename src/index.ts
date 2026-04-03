@@ -35,14 +35,14 @@ class LocalSave {
      *
      * @param config Optional runtime configuration object.
      * @param config.dbName Optional IndexedDB database name override.
-     * @param config.encryptionKey Optional AES-GCM key (length 16, 24, or 32).
+     * @param config.encryptionKey Optional AES-GCM key (no whitespace, length 16, 24, or 32).
      * @param config.categories Optional list of object store categories to use.
      * @param config.expiryThreshold Optional default expiration window in days.
      * @param config.blockedTimeoutThreshold Optional timeout in milliseconds for blocked open/delete requests.
      * @param config.clearOnDecryptError Optional flag to clear a category when decrypt fails.
      * @param config.printLogs Optional flag to enable debug/error logging.
      *
-     * @throws {LocalSaveConfigError} If encryption key length is invalid.
+     * @throws {LocalSaveConfigError} If encryption key contains whitespace or its length is invalid.
      * @throws {LocalSaveConfigError} If expiryThreshold is not a positive finite number.
      * @throws {LocalSaveConfigError} If blockedTimeoutThreshold is not a positive finite number.
      */
@@ -55,8 +55,10 @@ class LocalSave {
         this.blockedTimeoutThreshold = config?.blockedTimeoutThreshold ?? this.blockedTimeoutThreshold;
         this.printLogs = config?.printLogs ?? this.printLogs;
 
-        if (!!config?.encryptionKey && !isValidEncryptionKey(config?.encryptionKey)) {
-            throw new LocalSaveConfigError('Encryption key should be of length 16, 24, or 32 characters');
+        if (config?.encryptionKey !== undefined && !isValidEncryptionKey(config.encryptionKey)) {
+            throw new LocalSaveConfigError(
+                'Encryption key should not contain spaces and should be of length 16, 24, or 32 characters',
+            );
         } else if (
             typeof this.expiryThreshold !== 'number' ||
             !Number.isFinite(this.expiryThreshold) ||
@@ -384,7 +386,7 @@ class LocalSave {
      * @returns A promise that resolves to a CryptoKey object.
      *
      * @throws {LocalSaveEncryptionKeyError} If the encryption key is not configured.
-     * @throws {LocalSaveEncryptionKeyError} If the encryption key length is not 16, 24, or 32 characters.
+     * @throws {LocalSaveEncryptionKeyError} If the encryption key contains whitespace or its length is not 16, 24, or 32 characters.
      */
     private async getEncryptKey(): Promise<CryptoKey> {
         const sourceKey = this.encryptionKey;
@@ -392,7 +394,9 @@ class LocalSave {
             throw new LocalSaveEncryptionKeyError(`Encryption key is not configured`);
         }
         if (!isValidEncryptionKey(sourceKey)) {
-            throw new LocalSaveEncryptionKeyError('Encryption key should be of length 16, 24, or 32 characters');
+            throw new LocalSaveEncryptionKeyError(
+                'Encryption key should not contain spaces and should be of length 16, 24, or 32 characters',
+            );
         }
         if (this.cachedCryptoKeyPromise && this.cachedCryptoKeySource === sourceKey) {
             return this.cachedCryptoKeyPromise;
@@ -1117,16 +1121,39 @@ class LocalSave {
         });
     }
 }
+/**
+ * IndexedDB database name.
+ */
 export type DBName = string;
+
+/**
+ * Raw encryption key string used to derive an AES-GCM key.
+ */
 export type EncryptionKey = string;
+
+/**
+ * Object store name used as a logical category.
+ */
 export type Category = string;
+
+/**
+ * Number expected to be positive by runtime validation.
+ */
 export type PositiveNumber = number;
 
+/**
+ * Canonical record structure stored by LocalSave before encryption.
+ */
 export interface DBItem {
+    /** Unix timestamp in milliseconds when the item was written. */
     timestamp: number;
+    /** User payload associated with the key. */
     data: unknown;
 }
 
+/**
+ * Base64 payload containing IV + encrypted record bytes.
+ */
 export type DBItemEncryptedBase64 = string;
 
 /**
@@ -1150,7 +1177,6 @@ export interface Config {
     /**
      * The categories to use for storing data
      * You can use these to separate different types of data
-     * No spaces are allowed in the key
      *
      * @default ["userData"]
      */

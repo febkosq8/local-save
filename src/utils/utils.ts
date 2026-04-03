@@ -12,14 +12,14 @@ export function isEncryptionKeyDefined(key: string | undefined | null): key is s
 /**
  * Validates the encryption key.
  *
- * This function checks if the provided key has a valid length.
+ * This function checks if the provided key has no whitespace and a valid length.
  * The valid lengths for the encryption key are 16, 24, or 32 characters.
  *
  * @param key - The encryption key to validate.
- * @returns `true` if the key length is valid, otherwise `false`.
+ * @returns `true` if the key has no whitespace and a valid length, otherwise `false`.
  */
-export function isValidEncryptionKey(key: string) {
-    return key.length > 0 && [16, 24, 32].includes(key.length);
+export function isValidEncryptionKey(key: string): boolean {
+    return key.length > 0 && !/\s/.test(key) && [16, 24, 32].includes(key.length);
 }
 
 /**
@@ -27,11 +27,11 @@ export function isValidEncryptionKey(key: string) {
  *
  * @internal
  *
- * @param ArrayBuffer - The ArrayBuffer to convert.
+ * @param buffer - The ArrayBuffer to convert.
  *
  * @returns The Base64 encoded string representation of the ArrayBuffer.
  */
-export function arrayBufferToBase64(buffer: ArrayBuffer) {
+export function arrayBufferToBase64(buffer: ArrayBuffer): string {
     let binary = '';
     const bytes = new Uint8Array(buffer);
     const len = bytes.byteLength;
@@ -50,7 +50,7 @@ export function arrayBufferToBase64(buffer: ArrayBuffer) {
  *
  * @returns The resulting ArrayBuffer.
  */
-export function base64ToArrayBuffer(base64: string) {
+export function base64ToArrayBuffer(base64: string): ArrayBuffer {
     const binary_string = window.atob(base64);
     const len = binary_string.length;
     const bytes = new Uint8Array(len);

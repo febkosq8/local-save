@@ -81,6 +81,13 @@ describe('Utils - isValidEncryptionKey', { tags: ['utils'] }, ({ beforeEach, aft
         debugLog(`Expected: false\nActual: ${result}`);
         expect(result).toBe(false);
     });
+
+    test('should return false when key contains whitespace', { tags: ['utils'] }, ({ expect }) => {
+        const key = 'RDN3TLL4 D7M5Q59S';
+        const result = isValidEncryptionKey(key);
+        debugLog(`Expected: false\nActual: ${result}`);
+        expect(result).toBe(false);
+    });
 });
 describe('Utils - ArrayBuffer and Base64 Conversion', { tags: ['utils'] }, ({ beforeEach, afterEach }) => {
     beforeEach(({ task: { fullTestName } }) => {
