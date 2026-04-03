@@ -82,9 +82,9 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
             );
             expect((thrownError as Error).message).toBe('Data decryption failed');
 
-            debugLog('Verifying data is cleared after decryption error');
+            debugLog('Fetching keys using #1 encryption key after decryption error');
             const keysAfterError = await primaryLocalSave.listKeys('userData');
-            debugLog(`Expected keys after decryption error: []\nActual keys: ${JSON.stringify(keysAfterError)}`);
+            debugLog(`Expected keys : []\nActual keys: ${JSON.stringify(keysAfterError)}`);
             expect(keysAfterError).toHaveLength(0);
 
             await primaryLocalSave.destroy();
@@ -108,6 +108,7 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
                 clearOnDecryptError: false,
                 printLogs: isDebugLogsEnabled(),
             });
+
             debugLog('Saving data with using #1 encryption key');
             const writeResult = await primaryLocalSave.set('userData', randomKey, randomData);
             debugLog(`Validating result of set() method\nExpected: true\nActual: ${writeResult}`);
@@ -163,7 +164,9 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
 
         debugLog('Verifying all categories exist using listCategories() method');
         const allCategories = await localSave.listCategories();
-        debugLog(`Expected categories: ${JSON.stringify(categories)}\nActual: ${JSON.stringify(allCategories)}`);
+        debugLog(
+            `Validating all categories\nExpected: ${JSON.stringify(categories)}\nActual: ${JSON.stringify(allCategories)}`,
+        );
         expect(allCategories).toEqual(expect.arrayContaining(categories));
 
         debugLog('Clearing sessionData category using clear() method');
@@ -173,15 +176,14 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
 
         debugLog('Verifying sessionData is empty');
         const sessionKeys = await localSave.listKeys('sessionData');
-        debugLog(`Expected sessionData keys: []\nActual: ${JSON.stringify(sessionKeys)}`);
+        debugLog(`Validating sessionData keys\nExpected: []\nActual: ${JSON.stringify(sessionKeys)}`);
         expect(sessionKeys).toHaveLength(0);
 
         debugLog('Verifying other categories still have data');
         const userDataKeys = await localSave.listKeys('userData');
+        debugLog(`Validating userData keys\nExpected: ["${randomKey}"]\nActual: ${JSON.stringify(userDataKeys)}`);
         const cacheDataKeys = await localSave.listKeys('cacheData');
-        debugLog(
-            `Expected userData keys: ["${randomKey}"]\nActual: ${JSON.stringify(userDataKeys)}\nExpected cacheData keys: ["${randomKey}"]\nActual: ${JSON.stringify(cacheDataKeys)}`,
-        );
+        debugLog(`Validating cacheData keys\nExpected: ["${randomKey}"]\nActual: ${JSON.stringify(cacheDataKeys)}`);
         expect(userDataKeys).toEqual([randomKey]);
         expect(cacheDataKeys).toEqual([randomKey]);
 
@@ -211,7 +213,7 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
 
         debugLog('Verifying key is deleted');
         const getAfterRemove = await localSave.get('userData', testKey);
-        debugLog(`Validating get() after remove()\nExpected: null\nActual: ${JSON.stringify(getAfterRemove)}`);
+        debugLog(`Validating get() result after remove()\nExpected: null\nActual: ${JSON.stringify(getAfterRemove)}`);
         expect(getAfterRemove).toBeNull();
 
         debugLog(`Reusing key '${testKey}' with different data (iteration 2)`);
@@ -221,6 +223,9 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
 
         debugLog(`Retrieving reused key '${testKey}' (iteration 2)`);
         const getData2 = await localSave.get('userData', testKey);
+        debugLog(
+            `Validating data for reused key\nExpected: ${JSON.stringify(data2)}\nActual: ${JSON.stringify(getData2)}`,
+        );
         expect(getData2).toEqual(expect.objectContaining({ data: data2 }));
 
         await localSave.destroy();
@@ -244,22 +249,23 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
             debugLog('Using secondaryLocalSave to retrieve the same data');
             const getData = await secondaryLocalSave.get('userData', testKey);
             debugLog(
-                `Validating data retrieved by secondaryLocalSave\nExpected: ${JSON.stringify(randomData)}\nActual: ${JSON.stringify(getData?.data)}`,
+                `Validating data retrieved by secondaryLocalSave\nExpected: ${JSON.stringify(randomData)}\nActual: ${JSON.stringify(getData)}`,
             );
             expect(getData).toEqual(expect.objectContaining({ data: randomData }));
 
             debugLog('Using secondaryLocalSave to list keys in userData');
             const keys = await secondaryLocalSave.listKeys('userData');
-            debugLog(`Expected keys: ["${testKey}"]\nActual: ${JSON.stringify(keys)}`);
+            debugLog(`Validating userData keys\nExpected: ["${testKey}"]\nActual: ${JSON.stringify(keys)}`);
             expect(keys).toEqual([testKey]);
 
             debugLog('Using primaryLocalSave to remove the key');
             const removeResult = await primaryLocalSave.remove('userData', testKey);
+            debugLog(`Validating remove() result\nExpected: true\nActual: ${removeResult}`);
             expect(removeResult).toBe(true);
 
             debugLog('Using secondaryLocalSave to verify key was removed');
             const keysAfterRemove = await secondaryLocalSave.listKeys('userData');
-            debugLog(`Expected keys after remove: []\nActual: ${JSON.stringify(keysAfterRemove)}`);
+            debugLog(`Validating keys after remove\nExpected: []\nActual: ${JSON.stringify(keysAfterRemove)}`);
             expect(keysAfterRemove).toHaveLength(0);
 
             await primaryLocalSave.destroy();
@@ -271,19 +277,16 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
         'should not access data with different encryption key in parallel instances',
         { tags: ['integration'] },
         async ({ expect }) => {
-            const encryptionKey1 = 'ZE69DR2CJVJL9GQ9GW5W8XWRQOJ96R7L';
-            const encryptionKey2 = 'IMGN9E5JWONM37PEANMSIJNULLKK5UIT';
+            const encryptionKey1 = 'JD5ORN30LTX09M5T4G8D5112ORJ90BYD';
+            const encryptionKey2 = 'H8Z0V6AQTQI8FOSUSRNZIZQICJY0ZZTI';
             const testKey = randomString(6);
             const randomData = createObjectWithRandomValues(2);
 
-            debugLog('Creating primaryLocalSave with encryptionKey1');
             const primaryLocalSave = new LocalSave({
                 encryptionKey: encryptionKey1,
                 clearOnDecryptError: false,
                 printLogs: isDebugLogsEnabled(),
             });
-
-            debugLog('Creating secondaryLocalSave with encryptionKey2 (different key)');
             const secondaryLocalSave = new LocalSave({
                 encryptionKey: encryptionKey2,
                 clearOnDecryptError: false,
@@ -302,7 +305,6 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
             } catch (error) {
                 thrownError = error;
             }
-
             debugLog(
                 `Validating error on decryption\nExpected: LocalSaveError: Data decryption failed\nActual: ${String(thrownError)}`,
             );
@@ -327,14 +329,20 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
         debugLog('Setting data across multiple categories');
         for (let i = 0; i < categories.length; i++) {
             for (let j = 0; j < keys.length; j++) {
-                await localSave.set(categories[i], `${keys[j]}_${i}`, randomData);
+                const setResult = await localSave.set(categories[i], `${keys[j]}_${i}`, randomData);
+                debugLog(
+                    `Validating set() result for category "${categories[i]}" with key "${keys[j]}_${i}"\nExpected: true\nActual: ${setResult}`,
+                );
+                expect(setResult).toBe(true);
             }
         }
 
         debugLog('Verifying all categories have data using listKeys()');
         for (const category of categories) {
             const categoryKeys = await localSave.listKeys(category);
-            debugLog(`Category "${category}" keys: ${JSON.stringify(categoryKeys)}`);
+            debugLog(
+                `Validating keys for category "${category}"\nExpected: ${JSON.stringify(keys)}\nActual: ${JSON.stringify(categoryKeys)}`,
+            );
             expect(categoryKeys).toHaveLength(keys.length);
         }
 
@@ -348,7 +356,9 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
         debugLog('Verifying all categories are empty');
         for (const category of categories) {
             const categoryKeys = await localSave.listKeys(category);
-            debugLog(`Expected "${category}" keys: []\nActual: ${JSON.stringify(categoryKeys)}`);
+            debugLog(
+                `Validating keys for category "${category}"\nExpected: []\nActual: ${JSON.stringify(categoryKeys)}`,
+            );
             expect(categoryKeys).toHaveLength(0);
         }
 
@@ -362,14 +372,13 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
             const testKey = randomString(6);
             const randomData = createObjectWithRandomValues(4);
 
-            debugLog('Creating primaryLocalSave and setting data');
             const primaryLocalSave = new LocalSave({ printLogs: isDebugLogsEnabled() });
+            const secondaryLocalSave = new LocalSave({ printLogs: isDebugLogsEnabled() });
+
+            debugLog('Using primaryLocalSave to set data');
             const setResult = await primaryLocalSave.set('userData', testKey, randomData);
             debugLog(`Validating set() result\nExpected: true\nActual: ${setResult}`);
             expect(setResult).toBe(true);
-
-            debugLog('Creating fresh secondaryLocalSave without destroying primaryLocalSave');
-            const secondaryLocalSave = new LocalSave({ printLogs: isDebugLogsEnabled() });
 
             debugLog('Verifying secondaryLocalSave can access data set by primaryLocalSave');
             const retrievedData = await secondaryLocalSave.get('userData', testKey);
@@ -381,7 +390,7 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
 
             debugLog('Verifying key appears in secondaryLocalSave listKeys()');
             const keys = await secondaryLocalSave.listKeys('userData');
-            debugLog(`Expected keys: ["${testKey}"]\nActual: ${JSON.stringify(keys)}`);
+            debugLog(`Validating userData keys\nExpected: ["${testKey}"]\nActual: ${JSON.stringify(keys)}`);
             expect(keys).toEqual([testKey]);
 
             debugLog('Destroying both instances');
