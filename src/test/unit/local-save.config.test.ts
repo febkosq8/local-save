@@ -12,7 +12,7 @@ describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, after
         debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
-    test('should use default configuration values', { tags: ['config'] }, ({ expect }) => {
+    test('should use default configuration values', { tags: ['config'] }, async ({ expect }) => {
         const localSave = new LocalSave();
         debugLog(`Validating property 'dbName'\nExpected: LocalSave\nActual: ${localSave.dbName}`);
         expect(localSave.dbName).toBe('LocalSave');
@@ -28,9 +28,11 @@ describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, after
         expect(localSave.clearOnDecryptError).toBe(true);
         debugLog(`Validating property 'printLogs'\nExpected: false\nActual: ${localSave.printLogs}`);
         expect(localSave.printLogs).toBe(false);
+
+        await localSave.destroy();
     });
 
-    test('should apply provided configuration values', { tags: ['config'] }, ({ expect }) => {
+    test('should apply provided configuration values', { tags: ['config'] }, async ({ expect }) => {
         const localSave = new LocalSave({
             dbName: 'CustomDb',
             encryptionKey: '75Q1SDWH1B6KJIP6',
@@ -60,9 +62,11 @@ describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, after
         expect(localSave.blockedTimeoutThreshold).toBe(15000);
         debugLog(`Validating property 'printLogs'\nExpected: true\nActual: ${localSave.printLogs}`);
         expect(localSave.printLogs).toBe(true);
+
+        await localSave.destroy();
     });
 
-    test('should not throw error when config values are valid', { tags: ['config'] }, ({ expect }) => {
+    test('should not throw error when config values are valid', { tags: ['config'] }, async ({ expect }) => {
         let thrownError: unknown;
         let localSave: LocalSave | undefined;
         try {
@@ -79,6 +83,10 @@ describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, after
         expect(localSave?.encryptionKey).toBe('FXSVGSVFX5KE6LSTZU535JC0H6OXY4KI');
         expect(localSave?.expiryThreshold).toBe(15);
         expect(localSave?.blockedTimeoutThreshold).toBe(20000);
+
+        if (localSave) {
+            await localSave.destroy();
+        }
     });
 
     test('should throw error when encryption key length is invalid', { tags: ['config'] }, ({ expect }) => {
