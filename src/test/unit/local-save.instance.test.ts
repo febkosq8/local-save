@@ -9,10 +9,10 @@ import {
 
 describe('LocalSave - Instance', { tags: ['instance'] }, ({ beforeEach, afterEach }) => {
     beforeEach(({ task: { fullTestName } }) => {
-        console.log(`>>> Starting run - [ ${fullTestName} ] <<<`);
+        debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
-        console.log(`<<< Finished run - [ ${fullTestName} ] >>>`);
+        debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
     test('method set() is working', { tags: ['instance'] }, async ({ expect }) => {

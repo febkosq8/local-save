@@ -4,10 +4,10 @@ import LocalSaveConfigError from '@local-save/utils/errors/LocalSaveConfigError'
 
 describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, afterEach }) => {
     beforeEach(({ task: { fullTestName } }) => {
-        console.log(`>>> Starting run - [ ${fullTestName} ] <<<`);
+        debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
-        console.log(`<<< Finished run - [ ${fullTestName} ] >>>`);
+        debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
     test('should use default configuration values', { tags: ['config'] }, ({ expect }) => {

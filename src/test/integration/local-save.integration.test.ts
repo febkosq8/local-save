@@ -9,13 +9,13 @@ import {
 
 describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, afterEach }) => {
     beforeEach(({ task: { fullTestName } }) => {
-        console.log(`>>> Starting run - [ ${fullTestName} ] <<<`);
+        debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
-        console.log(`<<< Finished run - [ ${fullTestName} ] >>>`);
+        debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
-    test('should fail to retrieve data with a wrong encryption key', { tags: ['integration'] }, async () => {
+    test('should fail to retrieve data with a wrong encryption key', { tags: ['integration'] }, async ({ expect }) => {
         const randomKey = randomString(6);
         const randomData = createObjectWithRandomValues(1);
         const primaryLocalSave = new LocalSave({
@@ -51,7 +51,7 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
     test(
         'should clear data on decryption error when clearOnDecryptError is true',
         { tags: ['integration'] },
-        async () => {
+        async ({ expect }) => {
             const randomKey = randomString(6);
             const randomData = createObjectWithRandomValues(1);
             const primaryLocalSave = new LocalSave({
@@ -95,7 +95,7 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
     test(
         'should not clear data on decryption error when clearOnDecryptError is false',
         { tags: ['integration'] },
-        async () => {
+        async ({ expect }) => {
             const randomKey = randomString(6);
             const randomData = createObjectWithRandomValues(1);
             const primaryLocalSave = new LocalSave({

@@ -12,10 +12,10 @@ import {
 
 describe('Utils - isEncryptionKeyDefined', { tags: ['utils'] }, ({ beforeEach, afterEach }) => {
     beforeEach(({ task: { fullTestName } }) => {
-        console.log(`>>> Starting run - [ ${fullTestName} ] <<<`);
+        debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
-        console.log(`<<< Finished run - [ ${fullTestName} ] >>>`);
+        debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
     test('should return false when key is undefined', { tags: ['utils'] }, ({ expect }) => {
@@ -44,10 +44,10 @@ describe('Utils - isEncryptionKeyDefined', { tags: ['utils'] }, ({ beforeEach, a
 });
 describe('Utils - isValidEncryptionKey', { tags: ['utils'] }, ({ beforeEach, afterEach }) => {
     beforeEach(({ task: { fullTestName } }) => {
-        console.log(`>>> Starting run - [ ${fullTestName} ] <<<`);
+        debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
-        console.log(`<<< Finished run - [ ${fullTestName} ] >>>`);
+        debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
     test('should return true if the key length is 16', { tags: ['utils'] }, ({ expect }) => {
@@ -80,10 +80,10 @@ describe('Utils - isValidEncryptionKey', { tags: ['utils'] }, ({ beforeEach, aft
 });
 describe('Utils - ArrayBuffer and Base64 Conversion', { tags: ['utils'] }, ({ beforeEach, afterEach }) => {
     beforeEach(({ task: { fullTestName } }) => {
-        console.log(`>>> Starting run - [ ${fullTestName} ] <<<`);
+        debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
-        console.log(`<<< Finished run - [ ${fullTestName} ] >>>`);
+        debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
     test('should convert an ArrayBuffer to a Base64 encoded string', { tags: ['utils'] }, ({ expect }) => {
@@ -118,10 +118,10 @@ describe('Utils - ArrayBuffer and Base64 Conversion', { tags: ['utils'] }, ({ be
 
 describe('Utils - Errors', { tags: ['utils'] }, ({ beforeEach, afterEach }) => {
     beforeEach(({ task: { fullTestName } }) => {
-        console.log(`>>> Starting run - [ ${fullTestName} ] <<<`);
+        debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
-        console.log(`<<< Finished run - [ ${fullTestName} ] >>>`);
+        debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
     test('should set LocalSaveError name and message', { tags: ['utils'] }, ({ expect }) => {
@@ -165,10 +165,10 @@ describe('Utils - Errors', { tags: ['utils'] }, ({ beforeEach, afterEach }) => {
 
 describe('Utils - Logger', { tags: ['utils'] }, ({ beforeEach, afterEach }) => {
     beforeEach(({ task: { fullTestName } }) => {
-        console.log(`>>> Starting run - [ ${fullTestName} ] <<<`);
+        debugLog(`>>> Starting run - [ ${fullTestName} ] <<<`);
     });
     afterEach(({ task: { fullTestName } }) => {
-        console.log(`<<< Finished run - [ ${fullTestName} ] >>>`);
+        debugLog(`<<< Finished run - [ ${fullTestName} ] >>>`);
     });
 
     test('should throw an error if Logger class is instantiated', { tags: ['utils'] }, ({ expect }) => {
