@@ -169,7 +169,7 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
         );
         expect(allCategories).toEqual(expect.arrayContaining(categories));
 
-        debugLog('Clearing sessionData category using clear() method');
+        debugLog("Clearing 'sessionData' category using clear() method");
         const clearResult = await localSave.clear('sessionData');
         debugLog(`Validating clear() result\nExpected: true\nActual: ${clearResult}`);
         expect(clearResult).toBe(true);
@@ -341,7 +341,7 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
         for (const category of categories) {
             const categoryKeys = await localSave.listKeys(category);
             debugLog(
-                `Validating keys for category "${category}"\nExpected: ${JSON.stringify(keys)}\nActual: ${JSON.stringify(categoryKeys)}`,
+                `Validating keys for category '${category}'\nExpected: ${JSON.stringify(keys)}\nActual: ${JSON.stringify(categoryKeys)}`,
             );
             expect(categoryKeys).toHaveLength(keys.length);
         }
@@ -349,7 +349,7 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
         debugLog('Clearing all categories using clear()');
         for (const category of categories) {
             const clearResult = await localSave.clear(category);
-            debugLog(`Validating clear() for "${category}"\nExpected: true\nActual: ${clearResult}`);
+            debugLog(`Validating clear() for '${category}'\nExpected: true\nActual: ${clearResult}`);
             expect(clearResult).toBe(true);
         }
 
@@ -357,7 +357,7 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
         for (const category of categories) {
             const categoryKeys = await localSave.listKeys(category);
             debugLog(
-                `Validating keys for category "${category}"\nExpected: []\nActual: ${JSON.stringify(categoryKeys)}`,
+                `Validating keys for category '${category}'\nExpected: []\nActual: ${JSON.stringify(categoryKeys)}`,
             );
             expect(categoryKeys).toHaveLength(0);
         }
@@ -394,6 +394,418 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
             expect(keys).toEqual([testKey]);
 
             debugLog('Destroying both instances');
+            await primaryLocalSave.destroy();
+            await secondaryLocalSave.destroy();
+        },
+    );
+
+    test('should expire stale items while keeping fresh items', { tags: ['integration'] }, async ({ expect }) => {
+        const staleKey = 'staleKey';
+        const freshKey = 'freshKey';
+        const staleData = createObjectWithRandomValues(1);
+        const freshData = createObjectWithRandomValues(1);
+        const baseTime = new Date();
+        const localSave = new LocalSave({ printLogs: isDebugLogsEnabled() });
+
+        vi.useFakeTimers();
+        vi.setSystemTime(baseTime);
+
+        debugLog('Setting stale item at base time');
+        const staleSetResult = await localSave.set('userData', staleKey, staleData);
+        debugLog(`Validating set() result for stale item\nExpected: true\nActual: ${staleSetResult}`);
+        expect(staleSetResult).toBe(true);
+
+        vi.setSystemTime(baseTime.getTime() + 2 * 24 * 60 * 60 * 1000);
+
+        debugLog('Setting fresh item two days after base time');
+        const freshSetResult = await localSave.set('userData', freshKey, freshData);
+        debugLog(`Validating set() result for fresh item\nExpected: true\nActual: ${freshSetResult}`);
+        expect(freshSetResult).toBe(true);
+
+        debugLog('Current keys before expire()');
+        const keysBeforeExpire = await localSave.listKeys('userData');
+        debugLog(
+            `Validating keys before expire()\nExpected: ["${staleKey}", "${freshKey}"]\nActual: ${JSON.stringify(keysBeforeExpire)}`,
+        );
+        expect(keysBeforeExpire).toEqual(expect.arrayContaining([staleKey, freshKey]));
+
+        debugLog('Expiring data older than 1 day');
+        const expireResult = await localSave.expire(1);
+        debugLog(`Validating expire() result\nExpected: true\nActual: ${expireResult}`);
+        expect(expireResult).toBe(true);
+
+        debugLog('Verifying only fresh key remains after expire()');
+        const keysAfterExpire = await localSave.listKeys('userData');
+        debugLog(`Validating keys\nExpected: ["${freshKey}"]\nActual: ${JSON.stringify(keysAfterExpire)}`);
+        expect(keysAfterExpire).toEqual([freshKey]);
+
+        const staleItem = await localSave.get('userData', staleKey);
+        debugLog(`Validating stale item data\nExpected: null\nActual: ${JSON.stringify(staleItem)}`);
+        expect(staleItem).toBeNull();
+
+        const freshItem = await localSave.get('userData', freshKey);
+        debugLog(
+            `Validating fresh item data\nExpected: ${JSON.stringify(freshData)}\nActual: ${JSON.stringify(freshItem)}`,
+        );
+        expect(freshItem).toEqual(expect.objectContaining({ data: freshData }));
+
+        await localSave.destroy();
+        vi.useRealTimers();
+    });
+
+    test('should keep overwritten key when expiring older data', { tags: ['integration'] }, async ({ expect }) => {
+        const reusableKey = 'overwriteKey';
+        const oldData = createObjectWithRandomValues(1);
+        const newData = createObjectWithRandomValues(2);
+        const baseTime = new Date();
+        const localSave = new LocalSave({ printLogs: isDebugLogsEnabled() });
+
+        vi.useFakeTimers();
+        vi.setSystemTime(baseTime);
+
+        debugLog('Setting initial value for reusable key at base time');
+        const initialSetResult = await localSave.set('userData', reusableKey, oldData);
+        debugLog(`Validating initial set() result\nExpected: true\nActual: ${initialSetResult}`);
+        expect(initialSetResult).toBe(true);
+
+        vi.setSystemTime(baseTime.getTime() + 2 * 24 * 60 * 60 * 1000);
+
+        debugLog('Overwriting same key with newer value');
+        const overwriteResult = await localSave.set('userData', reusableKey, newData);
+        debugLog(`Validating overwrite set() result\nExpected: true\nActual: ${overwriteResult}`);
+        expect(overwriteResult).toBe(true);
+
+        debugLog('Expiring data older than 1 day');
+        const expireResult = await localSave.expire(1);
+        debugLog(`Validating expire() result\nExpected: true\nActual: ${expireResult}`);
+        expect(expireResult).toBe(true);
+
+        debugLog('Verifying keys after expire()');
+        const keys = await localSave.listKeys('userData');
+        debugLog(`Validating keys\nExpected: ["${reusableKey}"]\nActual: ${JSON.stringify(keys)}`);
+        expect(keys).toEqual([reusableKey]);
+
+        debugLog('Verifying value for reusable key is the new data, not expired old data');
+        const readResult = await localSave.get('userData', reusableKey);
+        debugLog(`Validating value\nExpected: ${JSON.stringify(newData)}\nActual: ${JSON.stringify(readResult)}`);
+        expect(readResult).toEqual(expect.objectContaining({ data: newData }));
+
+        await localSave.destroy();
+        vi.useRealTimers();
+    });
+
+    test(
+        'should keep valid category data untouched after invalid get() fails',
+        { tags: ['integration'] },
+        async ({ expect }) => {
+            const validKey = randomString(6);
+            const validData = createObjectWithRandomValues(2);
+            const invalidCategory = 'notConfiguredCategory';
+            const localSave = new LocalSave({
+                categories: ['userData'],
+                printLogs: isDebugLogsEnabled(),
+            });
+
+            debugLog("Setting valid data in 'userData' category");
+            const setResult = await localSave.set('userData', validKey, validData);
+            debugLog(`Validating set() result\nExpected: true\nActual: ${setResult}`);
+            expect(setResult).toBe(true);
+
+            debugLog("Running get() on invalid category 'notConfiguredCategory' and expecting an error");
+            let thrownError: unknown;
+            try {
+                await localSave.get(invalidCategory, validKey);
+            } catch (error) {
+                thrownError = error;
+            }
+            debugLog(
+                `Validating error\nExpected: LocalSaveError: Requested object store not found in current database version [category:notConfiguredCategory / dbName:LocalSave / version:1].\nActual: ${String(thrownError)}`,
+            );
+            expect((thrownError as Error).message).toContain(
+                'Requested object store not found in current database version',
+            );
+
+            debugLog("Listing keys in 'userData' category");
+            const keysAfterInvalidGet = await localSave.listKeys('userData');
+            debugLog(
+                `Validating keys in userData\nExpected: ["${validKey}"]\nActual: ${JSON.stringify(keysAfterInvalidGet)}`,
+            );
+            expect(keysAfterInvalidGet).toEqual([validKey]);
+
+            debugLog("Retrieving value in 'userData' category");
+            const readResult = await localSave.get('userData', validKey);
+            debugLog(
+                `Validating value in userData\nExpected: ${JSON.stringify(validData)}\nActual: ${JSON.stringify(readResult)}`,
+            );
+            expect(readResult).toEqual(expect.objectContaining({ data: validData }));
+
+            await localSave.destroy();
+        },
+    );
+
+    test(
+        'should keep valid category data untouched after invalid listKeys() fails',
+        { tags: ['integration'] },
+        async ({ expect }) => {
+            const validKey = randomString(6);
+            const validData = createObjectWithRandomValues(2);
+            const invalidCategory = 'notConfiguredCategory';
+            const localSave = new LocalSave({
+                categories: ['userData'],
+                printLogs: isDebugLogsEnabled(),
+            });
+
+            debugLog("Setting valid data in 'userData' category");
+            const setResult = await localSave.set('userData', validKey, validData);
+            debugLog(`Validating set() result\nExpected: true\nActual: ${setResult}`);
+            expect(setResult).toBe(true);
+
+            debugLog("Running listKeys() on invalid category 'notConfiguredCategory' and expecting an error");
+            let thrownError: unknown;
+            try {
+                await localSave.listKeys(invalidCategory);
+            } catch (error) {
+                thrownError = error;
+            }
+            debugLog(
+                `Validating error\nExpected: LocalSaveError: Requested object store not found in current database version [category:notConfiguredCategory / dbName:LocalSave / version:1].\nActual: ${String(thrownError)}`,
+            );
+            expect((thrownError as Error).message).toContain(
+                'Requested object store not found in current database version',
+            );
+
+            debugLog("Listing keys in 'userData' category");
+            const keysAfterInvalidList = await localSave.listKeys('userData');
+            debugLog(
+                `Validating keys in userData\nExpected: ["${validKey}"]\nActual: ${JSON.stringify(keysAfterInvalidList)}`,
+            );
+            expect(keysAfterInvalidList).toEqual([validKey]);
+
+            debugLog("Retrieving value in 'userData' category");
+            const readResult = await localSave.get('userData', validKey);
+            debugLog(
+                `Validating value in userData\nExpected: ${JSON.stringify(validData)}\nActual: ${JSON.stringify(readResult)}`,
+            );
+            expect(readResult).toEqual(expect.objectContaining({ data: validData }));
+
+            await localSave.destroy();
+        },
+    );
+
+    test(
+        'should keep valid category data untouched after invalid remove() fails',
+        { tags: ['integration'] },
+        async ({ expect }) => {
+            const validKey = randomString(6);
+            const validData = createObjectWithRandomValues(2);
+            const invalidCategory = 'notConfiguredCategory';
+            const localSave = new LocalSave({
+                categories: ['userData'],
+                printLogs: isDebugLogsEnabled(),
+            });
+
+            debugLog("Setting valid data in 'userData' category");
+            const setResult = await localSave.set('userData', validKey, validData);
+            debugLog(`Validating set() result\nExpected: true\nActual: ${setResult}`);
+            expect(setResult).toBe(true);
+
+            debugLog("Running remove() on invalid category 'notConfiguredCategory' and expecting an error");
+            let thrownError: unknown;
+            try {
+                await localSave.remove(invalidCategory, validKey);
+            } catch (error) {
+                thrownError = error;
+            }
+            debugLog(
+                `Validating error\nExpected: LocalSaveError: Requested object store not found in current database version [category:notConfiguredCategory / dbName:LocalSave / version:1].\nActual: ${String(thrownError)}`,
+            );
+            expect((thrownError as Error).message).toContain(
+                'Requested object store not found in current database version',
+            );
+
+            debugLog("Listing keys in 'userData' category");
+            const keysAfterInvalidRemove = await localSave.listKeys('userData');
+            debugLog(
+                `Validating keys in userData\nExpected: ["${validKey}"]\nActual: ${JSON.stringify(keysAfterInvalidRemove)}`,
+            );
+
+            debugLog("Retrieving value in 'userData' category");
+            const readResult = await localSave.get('userData', validKey);
+            debugLog(
+                `Validating value in userData\nExpected: ${JSON.stringify(validData)}\nActual: ${JSON.stringify(readResult)}`,
+            );
+            expect(keysAfterInvalidRemove).toEqual([validKey]);
+            expect(readResult).toEqual(expect.objectContaining({ data: validData }));
+
+            await localSave.destroy();
+        },
+    );
+
+    test(
+        'should keep valid category data untouched after invalid clear() fails',
+        { tags: ['integration'] },
+        async ({ expect }) => {
+            const validKey = randomString(6);
+            const validData = createObjectWithRandomValues(2);
+            const invalidCategory = 'notConfiguredCategory';
+            const localSave = new LocalSave({
+                categories: ['userData'],
+                printLogs: isDebugLogsEnabled(),
+            });
+
+            debugLog("Setting valid data in 'userData' category");
+            const setResult = await localSave.set('userData', validKey, validData);
+            debugLog(`Validating set() result\nExpected: true\nActual: ${setResult}`);
+            expect(setResult).toBe(true);
+
+            debugLog("Running clear() on invalid category 'notConfiguredCategory' and expecting an error");
+            let clearThrownError: unknown;
+            try {
+                await localSave.clear(invalidCategory);
+            } catch (error) {
+                clearThrownError = error;
+            }
+            debugLog(
+                `Validating error\nExpected: LocalSaveError: Requested object store not found in current database version [category:notConfiguredCategory / dbName:LocalSave / version:1].\nActual: ${String(clearThrownError)}`,
+            );
+            expect((clearThrownError as Error).message).toContain(
+                'Requested object store not found in current database version',
+            );
+
+            debugLog("Listing keys in 'userData' category");
+            const keysAfterInvalidClear = await localSave.listKeys('userData');
+            debugLog(
+                `Validating keys in userData\nExpected: ["${validKey}"]\nActual: ${JSON.stringify(keysAfterInvalidClear)}`,
+            );
+            expect(keysAfterInvalidClear).toEqual([validKey]);
+
+            debugLog("Retrieving value in 'userData' category");
+            const readResult = await localSave.get('userData', validKey);
+            debugLog(
+                `Validating value in userData\nExpected: ${JSON.stringify(validData)}\nActual: ${JSON.stringify(readResult)}`,
+            );
+            expect(readResult).toEqual(expect.objectContaining({ data: validData }));
+
+            await localSave.destroy();
+        },
+    );
+
+    test('should isolate destroy() by dbName', { tags: ['integration'] }, async ({ expect }) => {
+        const dbNamePrimary = `LocalSave_primary_${randomString(6)}`;
+        const dbNameSecondary = `LocalSave_secondary_${randomString(6)}`;
+        const primaryKey = randomString(6);
+        const secondaryKey = randomString(6);
+        const primaryData = createObjectWithRandomValues(1);
+        const secondaryData = createObjectWithRandomValues(1);
+
+        const primaryLocalSave = new LocalSave({
+            dbName: dbNamePrimary,
+            printLogs: isDebugLogsEnabled(),
+        });
+        const secondaryLocalSave = new LocalSave({
+            dbName: dbNameSecondary,
+            printLogs: isDebugLogsEnabled(),
+        });
+
+        debugLog('Setting data in primary database');
+        const primarySetResult = await primaryLocalSave.set('userData', primaryKey, primaryData);
+        debugLog(`Validating primary set() result\nExpected: true\nActual: ${primarySetResult}`);
+        expect(primarySetResult).toBe(true);
+
+        debugLog('Setting data in secondary database');
+        const secondarySetResult = await secondaryLocalSave.set('userData', secondaryKey, secondaryData);
+        debugLog(`Validating secondary set() result\nExpected: true\nActual: ${secondarySetResult}`);
+        expect(secondarySetResult).toBe(true);
+
+        debugLog('Destroying only primary database');
+        const destroyPrimaryResult = await primaryLocalSave.destroy();
+        debugLog(`Validating destroy() result\nExpected: true\nActual: ${destroyPrimaryResult}`);
+        expect(destroyPrimaryResult).toBe(true);
+
+        debugLog('Listing keys in secondary database');
+        const secondaryKeys = await secondaryLocalSave.listKeys('userData');
+        debugLog(`Validating secondary keys\nExpected: ["${secondaryKey}"]\nActual: ${JSON.stringify(secondaryKeys)}`);
+        expect(secondaryKeys).toEqual([secondaryKey]);
+
+        debugLog('Retrieving data from secondary database');
+        const secondaryRead = await secondaryLocalSave.get('userData', secondaryKey);
+        debugLog(
+            `Validating secondary data\nExpected: ${JSON.stringify(secondaryData)}\nActual: ${JSON.stringify(secondaryRead)}`,
+        );
+        expect(secondaryRead).toEqual(expect.objectContaining({ data: secondaryData }));
+
+        await secondaryLocalSave.destroy();
+    });
+
+    test(
+        'should clear only the failing category when clearOnDecryptError is true',
+        { tags: ['integration'] },
+        async ({ expect }) => {
+            const categories = createArrayWithRandomValues(2);
+            const primaryCategory = categories[0];
+            const secondaryCategory = categories[1];
+            const primaryKey = randomString(6);
+            const secondaryKey = randomString(6);
+            const primaryValue = createObjectWithRandomValues(1);
+            const secondaryValue = createObjectWithRandomValues(1);
+
+            const primaryLocalSave = new LocalSave({
+                categories,
+                encryptionKey: 'A52O2W1W2ZQ2DSYWQXFQ34J88A50D9Q2',
+                clearOnDecryptError: true,
+                printLogs: isDebugLogsEnabled(),
+            });
+            const secondaryLocalSave = new LocalSave({
+                categories,
+                encryptionKey: 'QDH8EVB2SR7KIB02SPT2S4RLD7MKG3R0',
+                clearOnDecryptError: true,
+                printLogs: isDebugLogsEnabled(),
+            });
+
+            debugLog(`Writing encrypted data into '${primaryCategory}' using primaryLocalSave`);
+            const userSetResult = await primaryLocalSave.set(primaryCategory, primaryKey, primaryValue);
+            debugLog(`Validating '${primaryCategory}' set() result\nExpected: true\nActual: ${userSetResult}`);
+            expect(userSetResult).toBe(true);
+
+            debugLog(`Writing encrypted data into '${secondaryCategory}' using primaryLocalSave`);
+            const sessionSetResult = await primaryLocalSave.set(secondaryCategory, secondaryKey, secondaryValue);
+            debugLog(`Validating '${secondaryCategory}' set() result\nExpected: true\nActual: ${sessionSetResult}`);
+            expect(sessionSetResult).toBe(true);
+
+            debugLog(`Triggering decryption error only in '${primaryCategory}' using secondaryLocalSave`);
+            let decryptionThrownError: unknown;
+            try {
+                await secondaryLocalSave.get(primaryCategory, primaryKey);
+            } catch (error) {
+                decryptionThrownError = error;
+            }
+            debugLog(
+                `Validating error\nExpected: LocalSaveError: Data decryption failed\nActual: ${String(decryptionThrownError)}`,
+            );
+            expect((decryptionThrownError as Error).message).toBe('Data decryption failed');
+
+            debugLog(`Verifying '${primaryCategory}' is cleared while '${secondaryCategory}' stays intact`);
+            debugLog(`Listing keys in '${primaryCategory}' category`);
+            const userDataKeysAfterError = await primaryLocalSave.listKeys(primaryCategory);
+            debugLog(
+                `Validating '${primaryCategory}' keys\nExpected: []\nActual: ${JSON.stringify(userDataKeysAfterError)}`,
+            );
+            expect(userDataKeysAfterError).toHaveLength(0);
+
+            debugLog(`Listing keys in '${secondaryCategory}' category`);
+            const sessionDataKeysAfterError = await primaryLocalSave.listKeys(secondaryCategory);
+            debugLog(
+                `Validating '${secondaryCategory}' keys\nExpected: ["${secondaryKey}"]\nActual: ${JSON.stringify(sessionDataKeysAfterError)}`,
+            );
+            expect(sessionDataKeysAfterError).toEqual([secondaryKey]);
+
+            debugLog(`Retrieving value in '${secondaryCategory}' category`);
+            const sessionDataRead = await primaryLocalSave.get(secondaryCategory, secondaryKey);
+            debugLog(
+                `Validating '${secondaryCategory}' value\nExpected: ${JSON.stringify(secondaryValue)}\nActual: ${JSON.stringify(sessionDataRead)}`,
+            );
+            expect(sessionDataRead).toEqual(expect.objectContaining({ data: secondaryValue }));
+
             await primaryLocalSave.destroy();
             await secondaryLocalSave.destroy();
         },
