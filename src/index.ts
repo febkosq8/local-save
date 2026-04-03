@@ -12,6 +12,8 @@ import {
 class LocalSave {
     dbName: DBName = 'LocalSave';
     encryptionKey?: EncryptionKey;
+    private cachedCryptoKeyPromise?: Promise<CryptoKey>;
+    private cachedCryptoKeySource?: EncryptionKey;
     categories: Category[] = ['userData'];
     expiryThreshold: PositiveNumber = 30;
     blockedTimeoutThreshold: PositiveNumber = 10 * 1000;
@@ -237,22 +239,41 @@ class LocalSave {
      * @throws {LocalSaveEncryptionKeyError} If the encryption key length is not 16, 24, or 32 characters.
      */
     private async getEncryptKey() {
-        if (!isEncryptionKeyDefined(this.encryptionKey)) {
+        const sourceKey = this.encryptionKey;
+        if (!isEncryptionKeyDefined(sourceKey)) {
             throw new LocalSaveEncryptionKeyError(`Encryption key is not configured`);
         }
-        if (!!this.encryptionKey && !isValidEncryptionKey(this.encryptionKey)) {
+        if (!isValidEncryptionKey(sourceKey)) {
             throw new LocalSaveEncryptionKeyError('Encryption key should be of length 16, 24, or 32 characters');
         }
-        const encoder = new TextEncoder();
-        const keyBytes = encoder.encode(this.encryptionKey);
-        const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
-        if (this.printLogs) {
-            Logger.debug(`Encryption key retrieved successfully`, {
-                keyLength: this.encryptionKey?.length,
-                keyBytesLength: keyBytes.length,
-            });
+        if (this.cachedCryptoKeyPromise && this.cachedCryptoKeySource === sourceKey) {
+            return this.cachedCryptoKeyPromise;
         }
-        return key;
+        const encoder = new TextEncoder();
+        const keyBytes = encoder.encode(sourceKey);
+        const importPromise = crypto.subtle
+            .importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
+            .then((key) => {
+                if (this.printLogs) {
+                    Logger.debug(`Encryption key retrieved successfully`, {
+                        keyLength: sourceKey.length,
+                        keyBytesLength: keyBytes.length,
+                    });
+                }
+                return key;
+            })
+            .catch((error) => {
+                if (this.cachedCryptoKeyPromise === importPromise) {
+                    this.cachedCryptoKeyPromise = undefined;
+                    this.cachedCryptoKeySource = undefined;
+                }
+                throw error;
+            });
+
+        this.cachedCryptoKeySource = sourceKey;
+        this.cachedCryptoKeyPromise = importPromise;
+
+        return importPromise;
     }
 
     /**

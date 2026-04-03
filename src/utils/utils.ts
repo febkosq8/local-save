@@ -1,12 +1,12 @@
 /**
  * Validates the encryption key.
- * This function checks if the provided key is defined and has a length.
+ * This function checks if the provided key is a string and has a length.
  *
  * @param key - The encryption key to validate.
  * @returns `true` if the key is defined.
  */
-export function isEncryptionKeyDefined(key: string | undefined | null) {
-    return !!key && key != '' && key.length > 0;
+export function isEncryptionKeyDefined(key: string | undefined | null): key is string {
+    return typeof key === 'string' && key.length > 0;
 }
 
 /**
