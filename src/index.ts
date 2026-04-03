@@ -9,9 +9,15 @@ import {
     isValidEncryptionKey,
 } from '@local-save/utils/utils';
 
+/**
+ * LocalSave provides a small IndexedDB-backed key-value API with optional AES-GCM encryption,
+ * category-based separation, and utility operations like key listing, expiration, and teardown.
+ */
 class LocalSave {
     dbName: DBName = 'LocalSave';
     encryptionKey?: EncryptionKey;
+    private textEncoder?: TextEncoder;
+    private textDecoder?: TextDecoder;
     private cachedCryptoKeyPromise?: Promise<CryptoKey>;
     private cachedCryptoKeySource?: EncryptionKey;
     categories: Category[] = ['userData'];
@@ -19,6 +25,27 @@ class LocalSave {
     blockedTimeoutThreshold: PositiveNumber = 10 * 1000;
     clearOnDecryptError: boolean = true;
     printLogs: boolean = false;
+
+    /**
+     * Creates a LocalSave instance and applies configuration defaults.
+     *
+     * - Persists constructor options into instance fields used by all operations.
+     * - Validates encryption key format when provided.
+     * - Validates numeric thresholds to fail fast for invalid runtime behavior.
+     *
+     * @param config Optional runtime configuration object.
+     * @param config.dbName Optional IndexedDB database name override.
+     * @param config.encryptionKey Optional AES-GCM key (length 16, 24, or 32).
+     * @param config.categories Optional list of object store categories to use.
+     * @param config.expiryThreshold Optional default expiration window in days.
+     * @param config.blockedTimeoutThreshold Optional timeout in milliseconds for blocked open/delete requests.
+     * @param config.clearOnDecryptError Optional flag to clear a category when decrypt fails.
+     * @param config.printLogs Optional flag to enable debug/error logging.
+     *
+     * @throws {LocalSaveConfigError} If encryption key length is invalid.
+     * @throws {LocalSaveConfigError} If expiryThreshold is not a positive finite number.
+     * @throws {LocalSaveConfigError} If blockedTimeoutThreshold is not a positive finite number.
+     */
     constructor(config?: Config) {
         this.dbName = config?.dbName ?? this.dbName;
         this.encryptionKey = config?.encryptionKey;
@@ -46,6 +73,38 @@ class LocalSave {
     }
 
     /**
+     * Returns a lazily initialized TextEncoder instance.
+     *
+     * - The encoder is allocated only on first use to avoid unnecessary work
+     * when encryption/decryption is never used.
+     *
+     * @internal
+     * @returns A reusable TextEncoder instance for UTF-8 encoding.
+     */
+    private getTextEncoder(): TextEncoder {
+        if (!this.textEncoder) {
+            this.textEncoder = new TextEncoder();
+        }
+        return this.textEncoder;
+    }
+
+    /**
+     * Returns a lazily initialized TextDecoder instance.
+     *
+     * - The decoder is allocated only on first use to avoid unnecessary work
+     * when encryption/decryption is never used.
+     *
+     * @internal
+     * @returns A reusable TextDecoder instance for UTF-8 decoding.
+     */
+    private getTextDecoder(): TextDecoder {
+        if (!this.textDecoder) {
+            this.textDecoder = new TextDecoder();
+        }
+        return this.textDecoder;
+    }
+
+    /**
      * Opens a connection to the IndexedDB database.
      * It handles the database versioning and ensures that the required object stores are created if they do not exist.
      *
@@ -55,7 +114,7 @@ class LocalSave {
      *
      * @returns A promise that resolves to the opened 'IDBDatabase' instance.
      */
-    private openDB(version?: number) {
+    private openDB(version?: number): Promise<IDBDatabase> {
         return new Promise<IDBDatabase>((resolve, reject) => {
             const openRequest = indexedDB.open(this.dbName, version);
             let settled = false;
@@ -148,7 +207,7 @@ class LocalSave {
      *
      * @returns A promise that resolves to an array of object store names.
      */
-    private async listStores() {
+    private async listStores(): Promise<Category[]> {
         const db = await this.openDB();
         try {
             const stores = Array.from(db.objectStoreNames);
@@ -178,7 +237,7 @@ class LocalSave {
      *
      * @throws {LocalSaveError} Will throw an error if the object store does not exist in the database and the category is invalid
      */
-    private async getStore(category: Category, mode: IDBTransactionMode = 'readonly') {
+    private async getStore(category: Category, mode: IDBTransactionMode = 'readonly'): Promise<IDBObjectStore> {
         let db = await this.openDB();
         if (!db.objectStoreNames.contains(category) && this.categories.includes(category)) {
             if (this.printLogs) {
@@ -238,7 +297,7 @@ class LocalSave {
      * @throws {LocalSaveEncryptionKeyError} If the encryption key is not configured.
      * @throws {LocalSaveEncryptionKeyError} If the encryption key length is not 16, 24, or 32 characters.
      */
-    private async getEncryptKey() {
+    private async getEncryptKey(): Promise<CryptoKey> {
         const sourceKey = this.encryptionKey;
         if (!isEncryptionKeyDefined(sourceKey)) {
             throw new LocalSaveEncryptionKeyError(`Encryption key is not configured`);
@@ -249,8 +308,7 @@ class LocalSave {
         if (this.cachedCryptoKeyPromise && this.cachedCryptoKeySource === sourceKey) {
             return this.cachedCryptoKeyPromise;
         }
-        const encoder = new TextEncoder();
-        const keyBytes = encoder.encode(sourceKey);
+        const keyBytes = this.getTextEncoder().encode(sourceKey);
         const importPromise = crypto.subtle
             .importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
             .then((key) => {
@@ -294,14 +352,14 @@ class LocalSave {
      * @throws {LocalSaveEncryptionKeyError} If the encryption key is not configured.
      * @throws {LocalSaveError} If the encryption process fails.
      */
-    private async encryptData(data: DBItem) {
+    private async encryptData(data: DBItem): Promise<DBItemEncryptedBase64> {
         try {
             if (!isEncryptionKeyDefined(this.encryptionKey)) {
                 throw new LocalSaveEncryptionKeyError(`Encryption key is not configured`);
             }
             const iv = window.crypto.getRandomValues(new Uint8Array(12));
             const generatedKey = await this.getEncryptKey();
-            const dataBuffer = new TextEncoder().encode(JSON.stringify(data));
+            const dataBuffer = this.getTextEncoder().encode(JSON.stringify(data));
             const encryptedData = await window.crypto.subtle.encrypt(
                 {
                     name: 'AES-GCM',
@@ -341,7 +399,7 @@ class LocalSave {
      * @throws {LocalSaveEncryptionKeyError} If the encryption key is not configured.
      * @throws {LocalSaveError} If the decryption process fails.
      */
-    async decryptData(encryptedBase64Data: string) {
+    async decryptData(encryptedBase64Data: string): Promise<DBItem> {
         try {
             if (!isEncryptionKeyDefined(this.encryptionKey)) {
                 throw new LocalSaveEncryptionKeyError(`Encryption key is not configured`);
@@ -358,7 +416,7 @@ class LocalSave {
                 generatedKey,
                 encryptedData,
             );
-            const decryptedData = JSON.parse(new TextDecoder().decode(decryptedBufferData)) as DBItem;
+            const decryptedData = JSON.parse(this.getTextDecoder().decode(decryptedBufferData)) as DBItem;
             if (this.printLogs) {
                 Logger.debug(`Data decrypted successfully`, {
                     timestamp: decryptedData.timestamp,
@@ -385,7 +443,7 @@ class LocalSave {
      *
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the saving process.
      */
-    async set(category: Category, itemKey: string, data: unknown) {
+    async set(category: Category, itemKey: string, data: unknown): Promise<true> {
         if (this.printLogs) {
             Logger.debug(`set() called to store data with following props`, {
                 category,
@@ -443,7 +501,7 @@ class LocalSave {
      * @throws {LocalSaveError} Will reject the promise if an error occurs while decrypting the data. Depending on the 'clearOnDecryptError' configuration, all data for the category can be cleared.
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the retrieval process.
      */
-    async get(category: Category, itemKey: string) {
+    async get(category: Category, itemKey: string): Promise<DBItem | null> {
         if (this.printLogs) {
             Logger.debug(`get() called to retrieve data with following props`, {
                 category,
@@ -506,7 +564,7 @@ class LocalSave {
         if (this.printLogs) {
             Logger.debug(`listCategories() called to list all categories`);
         }
-        return await this.listStores();
+        return this.listStores();
     }
 
     /**
@@ -518,37 +576,32 @@ class LocalSave {
      *
      * @throws {LocalSaveError} Will reject the promise if an error occurs while listing keys.
      */
-    async listKeys(category: Category) {
+    async listKeys(category: Category): Promise<string[]> {
         if (this.printLogs) {
             Logger.debug(`listKeys() called to list all keys for category`, {
                 category,
             });
         }
         const store = await this.getStore(category);
-        const db = store.transaction.db;
-        try {
-            return await new Promise<string[]>((resolve, reject) => {
-                const keysRequest = store.getAllKeys();
-                keysRequest.onsuccess = () => {
-                    const keys = keysRequest.result as string[];
-                    if (this.printLogs) {
-                        Logger.debug(`Keys listed successfully for category`, {
-                            category,
-                            keys,
-                        });
-                    }
-                    resolve(keys);
-                };
-                keysRequest.onerror = () => {
-                    if (this.printLogs) {
-                        Logger.error(`Error listing keys for category [category:${category}]`, keysRequest.error);
-                    }
-                    reject(new LocalSaveError(keysRequest.error?.message ?? 'Error listing keys'));
-                };
-            });
-        } finally {
-            db.close();
-        }
+        return new Promise<string[]>((resolve, reject) => {
+            const keysRequest = store.getAllKeys();
+            keysRequest.onsuccess = () => {
+                const keys = keysRequest.result as string[];
+                if (this.printLogs) {
+                    Logger.debug(`Keys listed successfully for category`, {
+                        category,
+                        keys,
+                    });
+                }
+                resolve(keys);
+            };
+            keysRequest.onerror = () => {
+                if (this.printLogs) {
+                    Logger.error(`Error listing keys for category [category:${category}]`, keysRequest.error);
+                }
+                reject(new LocalSaveError(keysRequest.error?.message ?? 'Error listing keys'));
+            };
+        });
     }
 
     /**
@@ -561,7 +614,7 @@ class LocalSave {
      *
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the removal process.
      */
-    async remove(category: Category, itemKey: string) {
+    async remove(category: Category, itemKey: string): Promise<true> {
         if (this.printLogs) {
             Logger.debug(`remove() called to remove data with following props`, {
                 category,
@@ -601,7 +654,7 @@ class LocalSave {
      *
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the clearing process.
      */
-    async clear(category: Category) {
+    async clear(category: Category): Promise<true> {
         if (this.printLogs) {
             Logger.debug(`clear() called to store all data under '${category}' category`);
         }
@@ -838,7 +891,7 @@ class LocalSave {
      *
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the deletion process.
      */
-    async destroy() {
+    async destroy(): Promise<true> {
         if (this.printLogs) {
             Logger.debug(`destroy() called to wipe all data under all categories`);
         }
@@ -901,12 +954,17 @@ export type DBName = string;
 export type EncryptionKey = string;
 export type Category = string;
 export type PositiveNumber = number;
+
 export interface DBItem {
     timestamp: number;
     data: unknown;
 }
+
 export type DBItemEncryptedBase64 = string;
 
+/**
+ * Configuration options for constructing LocalSave.
+ */
 export interface Config {
     /**
      * The name of the database to use for local save
