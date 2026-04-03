@@ -335,9 +335,13 @@ class LocalSave {
                 reject(error);
             };
 
-            request.onerror = () => {
-                requestError = onRequestError(request.error);
-            };
+            request.addEventListener(
+                'error',
+                () => {
+                    requestError = onRequestError(request.error);
+                },
+                { once: true },
+            );
 
             transaction.addEventListener(
                 'complete',
