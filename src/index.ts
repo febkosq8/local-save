@@ -633,9 +633,8 @@ class LocalSave {
     /**
      * Expires data older than the specified number of days.
      *
-     * This method iterates through all categories using IndexedDB cursor API and removes items
-     * that have a timestamp older than the specified number of days from the current date.
-     * Uses a single readwrite transaction per category for optimal performance.
+     * This method iterates through all categories using IndexedDB cursor API to identify expired
+     * entries and then removes them in a dedicated write transaction for each category.
      *
      * Handles both encrypted (base64-encoded) and unencrypted data. If decryption fails during
      * expiration and `clearOnDecryptError` is enabled, the entire category will be cleared.
@@ -746,7 +745,7 @@ class LocalSave {
 
                     const settleTx = writeStore.transaction;
 
-                    settleTx.oncomplete = () => {
+                    settleTx.addEventListener('complete', () => {
                         if (settled) return;
                         settled = true;
                         if (this.printLogs) {
@@ -756,9 +755,9 @@ class LocalSave {
                             });
                         }
                         resolve();
-                    };
+                    });
 
-                    settleTx.onerror = () => {
+                    settleTx.addEventListener('error', () => {
                         if (this.printLogs) {
                             Logger.error(
                                 `LocalSaveError during transaction commit while removing expired data [category:${category}]`,
@@ -768,14 +767,14 @@ class LocalSave {
                         settleReject(
                             new LocalSaveError(settleTx.error?.message ?? 'Error committing removal transaction'),
                         );
-                    };
+                    });
 
-                    settleTx.onabort = () => {
+                    settleTx.addEventListener('abort', () => {
                         if (this.printLogs) {
                             Logger.warn(`Transaction aborted while removing expired data [category:${category}]`);
                         }
                         settleReject(new LocalSaveError('Transaction aborted while removing expired data'));
-                    };
+                    });
 
                     for (const key of keysToDelete) {
                         const deleteRequest = writeStore.delete(key);
