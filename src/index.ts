@@ -645,7 +645,7 @@ class LocalSave {
      * @returns A promise that resolves to `true` if the operation was successful.
      *
      * @throws {LocalSaveError} - Throws an error if there is an issue scanning entries, decrypting data, or removing expired items.
-     * @throws {LocalSaveError} - If decryption fails during expiration (unless `clearOnDecryptError` is true).
+     * @throws {LocalSaveError} - If decryption fails during expiration.
      */
     async expire(days: number = this.expiryThreshold): Promise<true> {
         if (this.printLogs) {
@@ -659,22 +659,45 @@ class LocalSave {
             const store = await this.getStore(category);
             try {
                 const keysToDelete: string[] = [];
-                const decryptTasks: Promise<void>[] = [];
                 let scannedCount = 0;
 
                 await new Promise<void>((resolve, reject) => {
                     const cursorRequest = store.openCursor();
+                    let settled = false;
+                    let scanFinished = false;
+                    let pendingDecryptions = 0;
+                    let decryptionError: LocalSaveError | undefined;
+
+                    const settleReject = (error: LocalSaveError) => {
+                        if (settled) return;
+                        settled = true;
+                        reject(error);
+                    };
+
+                    const maybeResolve = () => {
+                        if (settled) return;
+                        if (decryptionError) {
+                            settleReject(decryptionError);
+                            return;
+                        }
+                        if (scanFinished && pendingDecryptions === 0) {
+                            settled = true;
+                            resolve();
+                        }
+                    };
 
                     cursorRequest.onsuccess = () => {
+                        if (settled || decryptionError) return;
                         const cursor = cursorRequest.result;
                         if (!cursor) {
+                            scanFinished = true;
                             if (this.printLogs) {
                                 Logger.debug(`Entries scanned successfully for expiring data`, {
                                     category,
                                     entryCount: scannedCount,
                                 });
                             }
-                            resolve();
+                            maybeResolve();
                             return;
                         }
 
@@ -684,13 +707,14 @@ class LocalSave {
                             const value = cursor.value as DBItemEncryptedBase64 | DBItem;
 
                             if (typeof value === 'string') {
-                                const decryptTask = (async () => {
-                                    try {
-                                        const item = await this.decryptData(value);
+                                pendingDecryptions += 1;
+                                void this.decryptData(value)
+                                    .then((item) => {
                                         if (item.timestamp < checkDate) {
                                             keysToDelete.push(key);
                                         }
-                                    } catch (error) {
+                                    })
+                                    .catch((error) => {
                                         if (this.printLogs) {
                                             Logger.error(`Failed to decrypt data while expiring`, error);
                                         }
@@ -702,18 +726,29 @@ class LocalSave {
                                             }
                                             void this.clear(category);
                                         }
-                                        throw new LocalSaveError(
-                                            error instanceof Error ? error.message : 'Failed to decrypt data',
-                                        );
-                                    }
-                                })();
-                                decryptTasks.push(decryptTask);
+                                        if (!decryptionError) {
+                                            decryptionError = new LocalSaveError(
+                                                error instanceof Error ? error.message : 'Failed to decrypt data',
+                                            );
+                                            try {
+                                                store.transaction.abort();
+                                            } catch {
+                                                // Ignore abort errors if the transaction is already finished.
+                                            }
+                                        }
+                                    })
+                                    .finally(() => {
+                                        pendingDecryptions -= 1;
+                                        maybeResolve();
+                                    });
                             } else if (value.timestamp < checkDate) {
                                 keysToDelete.push(key);
                             }
                         }
 
-                        cursor.continue();
+                        if (!decryptionError) {
+                            cursor.continue();
+                        }
                     };
 
                     cursorRequest.onerror = () => {
@@ -723,11 +758,9 @@ class LocalSave {
                                 cursorRequest.error,
                             );
                         }
-                        reject(new LocalSaveError(cursorRequest.error?.message ?? 'Error scanning entries'));
+                        settleReject(new LocalSaveError(cursorRequest.error?.message ?? 'Error scanning entries'));
                     };
                 });
-
-                await Promise.all(decryptTasks);
 
                 if (keysToDelete.length === 0) {
                     continue;
