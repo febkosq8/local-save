@@ -23,9 +23,16 @@ export function randomString(length: number = 16): string {
     if (!Number.isInteger(length) || length < 0) {
         throw new Error('length should be a non-negative integer');
     }
-    return Math.random()
-        .toString(36)
-        .slice(2, 2 + length);
+    if (length === 0) {
+        return '';
+    }
+    const alphabet = '0123456789abcdefghijklmnopqrstuvwxyz';
+    if (typeof globalThis.crypto?.getRandomValues === 'function') {
+        const bytes = new Uint8Array(length);
+        globalThis.crypto.getRandomValues(bytes);
+        return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('');
+    }
+    return Array.from({ length }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
 }
 
 export function createArrayWithRandomValues(length: number = 1): string[] {
