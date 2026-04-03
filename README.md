@@ -34,6 +34,8 @@
 
 ```bash
 npm install @febkosq8/local-save
+# or
+pnpm add @febkosq8/local-save
 ```
 
 ---

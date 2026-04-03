@@ -27,7 +27,7 @@
 - Run tests with:
 
 ```bash
-npm run test
+pnpm test
 ```
 
 - This project uses browser-based Vitest + Playwright due to IndexedDB requirements.
@@ -39,9 +39,9 @@ npm run test
 - Before finalizing substantial changes, run:
 
 ```bash
-npm run lint
-npm run test
-npm run build
+pnpm lint
+pnpm test
+pnpm build
 ```
 
 - If only docs are changed, skip heavy checks unless explicitly requested.
