@@ -1,4 +1,4 @@
-import LocalSaveError from '@local-save/utils/errors/LocalSaveError';
+import type LocalSaveError from '@local-save/utils/errors/LocalSaveError';
 
 /**
  * Wraps an IndexedDB request with transaction completion tracking.
