@@ -154,7 +154,7 @@ describe('LocalSave - Instance', { tags: ['instance'] }, ({ beforeEach, afterEac
         vi.useFakeTimers();
         const baseTime = new Date();
         vi.setSystemTime(baseTime);
-        const localSave = new LocalSave({ expiryThreshold: 1, printLogs: isDebugLogsEnabled() });
+        const localSave = new LocalSave({ expiryThreshold: 24 * 60 * 60 * 1000, printLogs: isDebugLogsEnabled() });
         debugLog('Setting data for multiple keys using set() method');
         await localSave.set('userData', randomKeys[0], randomValues);
         await localSave.set('userData', randomKeys[1], randomValues);
@@ -165,7 +165,7 @@ describe('LocalSave - Instance', { tags: ['instance'] }, ({ beforeEach, afterEac
         expect(keysResultPreExpire).toHaveLength(2);
         vi.setSystemTime(baseTime.getTime() + 2 * 24 * 60 * 60 * 1000);
         debugLog(`Expiring items using expire() method`);
-        const expireResult = await localSave.expire(1);
+        const expireResult = await localSave.expire(24 * 60 * 60 * 1000);
         debugLog(`Validating result of expire() method\nExpected: true\nActual: ${expireResult}`);
         expect(expireResult).toBe(true);
         const keysResult = await localSave.listKeys('userData');

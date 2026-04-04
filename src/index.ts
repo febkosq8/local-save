@@ -21,7 +21,7 @@ class LocalSave {
     private cachedCryptoKeyPromise?: Promise<CryptoKey>;
     private cachedCryptoKeySource?: EncryptionKey;
     categories: Category[] = ['userData'];
-    expiryThreshold: PositiveNumber = 30;
+    expiryThreshold: PositiveNumber = 30 * 24 * 60 * 60 * 1000;
     blockedTimeoutThreshold: PositiveNumber = 10 * 1000;
     clearOnDecryptError: boolean = true;
     printLogs: boolean = false;
@@ -37,7 +37,7 @@ class LocalSave {
      * @param config.dbName Optional IndexedDB database name override.
      * @param config.encryptionKey Optional AES-GCM key (no whitespace, length 16, 24, or 32).
      * @param config.categories Optional list of object store categories to use.
-     * @param config.expiryThreshold Optional default expiration window in days.
+     * @param config.expiryThreshold Optional default expiration window in milliseconds.
      * @param config.blockedTimeoutThreshold Optional timeout in milliseconds for blocked open/delete requests.
      * @param config.clearOnDecryptError Optional flag to clear a category when decrypt fails.
      * @param config.printLogs Optional flag to enable debug/error logging.
@@ -855,7 +855,7 @@ class LocalSave {
     }
 
     /**
-     * Expires data older than the specified number of days.
+     * Expires data older than the specified threshold in milliseconds.
      *
      * For each category, this method performs a readonly cursor scan to identify candidate
      * records, decrypts encrypted entries to inspect their timestamps, and then deletes the
@@ -864,21 +864,21 @@ class LocalSave {
      * If decryption fails during expiration and `clearOnDecryptError` is enabled, the category
      * is cleared before the error is rethrown.
      *
-     * @param {number} [days=this.expiryThreshold] The number of days to use as the threshold for expiring data.
+     * @param {number} [thresholdMs=this.expiryThreshold] The threshold in milliseconds to use for expiring data.
      * Defaults to expiryThreshold from config if not provided.
      *
      * @returns A promise that resolves to `true` if the operation was successful.
      *
      * @throws {LocalSaveError} - Throws an error if there is an issue scanning entries, decrypting data, or removing expired items.
      */
-    async expire(days: number = this.expiryThreshold): Promise<true> {
+    async expire(thresholdMs: number = this.expiryThreshold): Promise<true> {
         if (this.printLogs) {
-            Logger.debug(`expire() called to expire data older than ${days} days`);
+            Logger.debug(`expire() called to expire data older than ${thresholdMs} ms`);
         }
-        if (typeof days !== 'number' || !Number.isFinite(days) || days <= 0) {
-            throw new LocalSaveError('days should be a positive number');
+        if (typeof thresholdMs !== 'number' || !Number.isFinite(thresholdMs) || thresholdMs <= 0) {
+            throw new LocalSaveError('thresholdMs should be a positive number');
         }
-        const checkDate = Date.now() - days * 86400000;
+        const checkDate = Date.now() - thresholdMs;
         for (const category of this.categories) {
             const store = await this.getStore(category);
             try {
@@ -1047,7 +1047,7 @@ class LocalSave {
                 });
             } catch (error) {
                 if (this.printLogs) {
-                    Logger.error(`Expiring data older than '${days}' days failed`, error);
+                    Logger.error(`Expiring data older than '${thresholdMs}' ms failed`, error);
                 }
                 throw error;
             }
@@ -1182,9 +1182,10 @@ export interface Config {
      */
     categories?: Category[];
     /**
-     * The number of days to use as the threshold for expiring data
+     * The threshold in milliseconds for expiring data.
      *
-     * @default 30
+     * Total = days * hours * minutes * seconds * milliseconds
+     * @default 30 * 24 * 60 * 60 * 1000 = 2592000000
      */
     expiryThreshold?: PositiveNumber;
     /**

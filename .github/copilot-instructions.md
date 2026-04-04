@@ -6,6 +6,54 @@
 - Preserve the public API and behavior unless a change request explicitly requires a breaking update.
 - Keep runtime dependencies at zero unless explicitly requested.
 
+## Implementation Guidance
+
+## Current Implementation Details (Source of Truth)
+
+- Core implementation lives in `src/index.ts` in class `LocalSave`; preserve method signatures and return contracts.
+- Default runtime config is:
+    - `dbName: "LocalSave"`
+    - `categories: ["userData"]`
+    - `expiryThreshold: 30 * 24 * 60 * 60 * 1000` (ms)
+    - `blockedTimeoutThreshold: 10000` (ms)
+    - `clearOnDecryptError: true`
+    - `printLogs: false`
+    - `encryptionKey: undefined`
+- Constructor validation behavior must be preserved:
+    - encryption key must be non-whitespace and length `16 | 24 | 32`
+    - `expiryThreshold` and `blockedTimeoutThreshold` must be finite positive numbers
+    - invalid values throw `LocalSaveConfigError`
+- Storage format behavior must be preserved:
+    - without encryption, store `DBItem` object `{ timestamp, data }`
+    - with encryption, store a base64 string containing `IV(12 bytes) + AES-GCM ciphertext`
+- Encryption/decryption behavior must be preserved:
+    - AES-GCM key import via `crypto.subtle.importKey("raw", ...)`
+    - lazy encoder/decoder initialization and cached `CryptoKey` reuse for the same key source
+    - decryption failures throw `LocalSaveError("Data decryption failed")`
+- Category and store behavior must be preserved:
+    - `getStore()` auto-creates missing object stores only when the category exists in configured `categories`
+    - unknown category access rejects with `LocalSaveError`
+    - `listCategories()` reflects actual object stores from IndexedDB
+- Operation semantics to keep stable:
+    - `set(category, key, data) -> Promise<true>`
+    - `get(category, key) -> Promise<DBItem | null>`
+    - `listKeys(category) -> Promise<string[]>`
+    - `remove(category, key) -> Promise<true>`
+    - `clear(category) -> Promise<true>`
+    - `expire(thresholdMs?) -> Promise<true>` and rejects for non-positive/invalid `thresholdMs`
+    - `destroy() -> Promise<true>`
+- IndexedDB transaction behavior to preserve:
+    - write methods resolve only after transaction completion (not just request success)
+    - blocked open/delete operations use timeout based on `blockedTimeoutThreshold`
+    - database connections are closed on transaction end and versionchange events
+- `clearOnDecryptError` behavior is test-backed and must remain unchanged:
+    - `true`: failed decrypt in `get()`/`expire()` clears affected category
+    - `false`: failed decrypt does not clear category data
+- Error classes are part of expected behavior and should remain meaningful and distinct:
+    - `LocalSaveError`
+    - `LocalSaveConfigError`
+    - `LocalSaveEncryptionKeyError`
+
 ## Code Style and Scope
 
 - Prefer small, targeted edits over broad refactors.
@@ -21,6 +69,8 @@
     - category-aware operations (`set`, `get`, `listKeys`, `clear`, `remove`)
 - Preserve encryption-path correctness and error handling (`clearOnDecryptError`, encryption key validation).
 - Do not silently change default config behavior.
+- Keep `expire()` logic category-wide and timestamp-driven (milliseconds threshold).
+- Keep IndexedDB blocked timeout handling aligned between `openDB()` and `destroy()`.
 
 ## Testing Guidance
 

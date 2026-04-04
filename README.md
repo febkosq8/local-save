@@ -49,7 +49,7 @@ pnpm add @febkosq8/local-save
 | **_dbName_**                  | `string`   | `"LocalSave"`  | Name of the IndexedDB database.                                                                                                                        |
 | **_encryptionKey_**           | `string`   | `undefined`    | Encryption key that should be either [16, 24, or 32] characters to be used for AES-GCM encryption. If not provided, data will be stored in plain text. |
 | **_categories_**              | `string[]` | `["userData"]` | Array of categories (Object store names).                                                                                                              |
-| **_expiryThreshold_**         | `number`   | `30`           | Data expiration threshold in days.                                                                                                                     |
+| **_expiryThreshold_**         | `number`   | `2592000000`   | Data expiration threshold in milliseconds.                                                                                                             |
 | **_blockedTimeoutThreshold_** | `number`   | `10000`        | Timeout in milliseconds before blocked IndexedDB open/delete requests fail.                                                                            |
 | **_clearOnDecryptError_**     | `boolean`  | `true`         | Whether to clear a category if decryption fails.                                                                                                       |
 | **_printLogs_**               | `boolean`  | `false`        | Whether to print logs (Debug and errors).                                                                                                              |
@@ -64,7 +64,7 @@ import LocalSave from "@febkosq8/local-save";
 const localSaveConfig = {
   encryptionKey: "MyRandEncryptKeyThatIs32CharLong", // Encryption key for data
   categories: ["userData", "settings"], // Define categories for data storage
-  expiryThreshold: 14, // Clear data older than 14 days
+  expiryThreshold: 14 * 24 * 60 * 60 * 1000, // Clear data older than 14 days (in ms)
   blockedTimeoutThreshold: 15000, // Wait up to 15s when IndexedDB requests are blocked
 };
 const localSave = new LocalSave(localSaveConfig);
@@ -131,7 +131,7 @@ Clear all expired data from all categories
 ```typescript
 // If a value is provided, it will override the default expiry threshold
 // This can be placed on top of the file to clear expired data on page load
-await localSave.expire(14); // Clear data older than 14 days from all categories
+await localSave.expire(14 * 24 * 60 * 60 * 1000); // Clear data older than 14 days from all categories (in ms)
 ```
 
 ### Destroying the entire database

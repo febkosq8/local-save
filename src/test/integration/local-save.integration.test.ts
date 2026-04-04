@@ -419,7 +419,7 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
 
         vi.setSystemTime(baseTime.getTime() + 2 * 24 * 60 * 60 * 1000);
 
-        debugLog('Setting fresh item two days after base time');
+        debugLog('Setting fresh item two days after base time (in ms)');
         const freshSetResult = await localSave.set('userData', freshKey, freshData);
         debugLog(`Validating set() result for fresh item\nExpected: true\nActual: ${freshSetResult}`);
         expect(freshSetResult).toBe(true);
@@ -431,8 +431,8 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
         );
         expect(keysBeforeExpire).toEqual(expect.arrayContaining([staleKey, freshKey]));
 
-        debugLog('Expiring data older than 1 day');
-        const expireResult = await localSave.expire(1);
+        debugLog('Expiring data older than 1 day in milliseconds');
+        const expireResult = await localSave.expire(24 * 60 * 60 * 1000);
         debugLog(`Validating expire() result\nExpected: true\nActual: ${expireResult}`);
         expect(expireResult).toBe(true);
 
@@ -477,8 +477,8 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
         debugLog(`Validating overwrite set() result\nExpected: true\nActual: ${overwriteResult}`);
         expect(overwriteResult).toBe(true);
 
-        debugLog('Expiring data older than 1 day');
-        const expireResult = await localSave.expire(1);
+        debugLog('Expiring data older than 1 day in milliseconds');
+        const expireResult = await localSave.expire(24 * 60 * 60 * 1000);
         debugLog(`Validating expire() result\nExpected: true\nActual: ${expireResult}`);
         expect(expireResult).toBe(true);
 
