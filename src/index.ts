@@ -1,13 +1,18 @@
+import { LocalSaveCrypto } from '@local-save/internal/crypto';
+import { wrapRequestWithTransaction } from '@local-save/internal/transactions';
+import type {
+    Category,
+    Config,
+    DBItem,
+    DBItemEncryptedBase64,
+    DBName,
+    EncryptionKey,
+    PositiveNumber,
+} from '@local-save/types';
 import LocalSaveConfigError from '@local-save/utils/errors/LocalSaveConfigError';
-import LocalSaveEncryptionKeyError from '@local-save/utils/errors/LocalSaveEncryptionKeyError';
 import LocalSaveError from '@local-save/utils/errors/LocalSaveError';
 import Logger from '@local-save/utils/logger';
-import {
-    arrayBufferToBase64,
-    base64ToArrayBuffer,
-    isEncryptionKeyDefined,
-    isValidEncryptionKey,
-} from '@local-save/utils/utils';
+import { isValidEncryptionKey } from '@local-save/utils/utils';
 
 /**
  * LocalSave provides a small IndexedDB-backed key-value API with optional AES-GCM encryption,
@@ -16,10 +21,7 @@ import {
 class LocalSave {
     dbName: DBName = 'LocalSave';
     encryptionKey?: EncryptionKey;
-    private textEncoder?: TextEncoder;
-    private textDecoder?: TextDecoder;
-    private cachedCryptoKeyPromise?: Promise<CryptoKey>;
-    private cachedCryptoKeySource?: EncryptionKey;
+    private crypto: LocalSaveCrypto;
     categories: Category[] = ['userData'];
     expiryThreshold: PositiveNumber = 30 * 24 * 60 * 60 * 1000;
     blockedTimeoutThreshold: PositiveNumber = 10 * 1000;
@@ -54,6 +56,10 @@ class LocalSave {
         this.expiryThreshold = config?.expiryThreshold ?? this.expiryThreshold;
         this.blockedTimeoutThreshold = config?.blockedTimeoutThreshold ?? this.blockedTimeoutThreshold;
         this.printLogs = config?.printLogs ?? this.printLogs;
+        this.crypto = new LocalSaveCrypto({
+            getEncryptionKey: () => this.encryptionKey,
+            isLoggingEnabled: () => this.printLogs,
+        });
 
         if (config?.encryptionKey !== undefined && !isValidEncryptionKey(config.encryptionKey)) {
             throw new LocalSaveConfigError(
@@ -75,38 +81,6 @@ class LocalSave {
     }
 
     /**
-     * Returns a lazily initialized TextEncoder instance.
-     *
-     * - The encoder is allocated only on first use to avoid unnecessary work
-     * when encryption/decryption is never used.
-     *
-     * @internal
-     * @returns A reusable TextEncoder instance for UTF-8 encoding.
-     */
-    private getTextEncoder(): TextEncoder {
-        if (!this.textEncoder) {
-            this.textEncoder = new TextEncoder();
-        }
-        return this.textEncoder;
-    }
-
-    /**
-     * Returns a lazily initialized TextDecoder instance.
-     *
-     * - The decoder is allocated only on first use to avoid unnecessary work
-     * when encryption/decryption is never used.
-     *
-     * @internal
-     * @returns A reusable TextDecoder instance for UTF-8 decoding.
-     */
-    private getTextDecoder(): TextDecoder {
-        if (!this.textDecoder) {
-            this.textDecoder = new TextDecoder();
-        }
-        return this.textDecoder;
-    }
-
-    /**
      * Opens a connection to the IndexedDB database.
      * It handles the database versioning and ensures that the required object stores are created if they do not exist.
      *
@@ -114,7 +88,7 @@ class LocalSave {
      *
      * @param version - The version of the database to open. Optional.
      *
-     * @returns A promise that resolves to the opened 'IDBDatabase' instance.
+     * @returns {Promise<IDBDatabase>} A promise that resolves to the opened IDBDatabase instance.
      */
     private openDB(version?: number): Promise<IDBDatabase> {
         return new Promise<IDBDatabase>((resolve, reject) => {
@@ -207,7 +181,7 @@ class LocalSave {
      *
      * @internal
      *
-     * @returns A promise that resolves to an array of object store names.
+     * @returns {Promise<Category[]>} A promise that resolves to an array of object store names.
      */
     private async listStores(): Promise<Category[]> {
         const db = await this.openDB();
@@ -235,7 +209,7 @@ class LocalSave {
      * @param category - The name of the object store to retrieve.
      * @param mode - The mode for the transaction (default is "readonly").
      *
-     * @returns A promise that resolves to the requested object store.
+     * @returns {Promise<IDBObjectStore>} A promise that resolves to the requested object store.
      *
      * @throws {LocalSaveError} Will throw an error if the object store does not exist in the database and the category is invalid
      */
@@ -291,241 +265,32 @@ class LocalSave {
     }
 
     /**
-     * Wraps an IndexedDB request with transaction completion tracking.
-     * Ensures the promise only resolves/rejects after the transaction fully completes,
-     * not just when the request succeeds.
+     * Encrypts a DBItem using the configured encryption key.
+     * Delegates to the extracted crypto helper.
      *
      * @internal
      *
-     * @param options The request and transaction handlers to track.
-     * @param options.request The IndexedDB request to track.
-     * @param options.transaction The IndexedDB transaction containing the request.
-     * @param options.onRequestError Handler to convert request errors to LocalSaveError.
-     * @param options.onTransactionError Handler to convert transaction errors to LocalSaveError.
-     * @param options.onTransactionAbort Handler to handle transaction aborts.
-     * @param options.onTransactionComplete Handler to run when the transaction completes successfully.
-     * @returns A promise that resolves when the transaction completes successfully.
-     */
-    private wrapRequestWithTransaction({
-        request,
-        transaction,
-        onRequestError,
-        onTransactionError,
-        onTransactionAbort,
-        onTransactionComplete,
-    }: {
-        request: IDBRequest;
-        transaction: IDBTransaction;
-        onRequestError: (error: DOMException | null) => LocalSaveError;
-        onTransactionError: (error: DOMException | null) => LocalSaveError;
-        onTransactionAbort: (error: DOMException | null) => LocalSaveError;
-        onTransactionComplete?: () => void;
-    }): Promise<true> {
-        return new Promise<true>((resolve, reject) => {
-            let settled = false;
-            let requestError: LocalSaveError | undefined;
-
-            const settleResolve = () => {
-                if (settled) return;
-                settled = true;
-                resolve(true);
-            };
-
-            const settleReject = (error: LocalSaveError) => {
-                if (settled) return;
-                settled = true;
-                reject(error);
-            };
-
-            request.addEventListener(
-                'error',
-                () => {
-                    requestError = onRequestError(request.error);
-                },
-                { once: true },
-            );
-
-            transaction.addEventListener(
-                'complete',
-                () => {
-                    if (settled) return;
-                    if (requestError) {
-                        settleReject(requestError);
-                        return;
-                    }
-                    onTransactionComplete?.();
-                    settleResolve();
-                },
-                { once: true },
-            );
-
-            transaction.addEventListener(
-                'error',
-                () => {
-                    if (settled) return;
-                    settleReject(requestError ?? onTransactionError(transaction.error));
-                },
-                { once: true },
-            );
-
-            transaction.addEventListener(
-                'abort',
-                () => {
-                    if (settled) return;
-                    settleReject(requestError ?? onTransactionAbort(transaction.error));
-                },
-                { once: true },
-            );
-        });
-    }
-
-    /**
-     * Retrieves the encryption key as a CryptoKey object.
+     * @param data The item payload to encrypt.
      *
-     * @internal
-     * @returns A promise that resolves to a CryptoKey object.
+     * @returns {Promise<DBItemEncryptedBase64>} A promise that resolves to a base64 payload containing IV + ciphertext.
      *
-     * @throws {LocalSaveEncryptionKeyError} If the encryption key is not configured.
-     * @throws {LocalSaveEncryptionKeyError} If the encryption key contains whitespace or its length is not 16, 24, or 32 characters.
-     */
-    private async getEncryptKey(): Promise<CryptoKey> {
-        const sourceKey = this.encryptionKey;
-        if (!isEncryptionKeyDefined(sourceKey)) {
-            throw new LocalSaveEncryptionKeyError(`Encryption key is not configured`);
-        }
-        if (!isValidEncryptionKey(sourceKey)) {
-            throw new LocalSaveEncryptionKeyError(
-                'Encryption key should not contain spaces and should be of length 16, 24, or 32 characters',
-            );
-        }
-        if (this.cachedCryptoKeyPromise && this.cachedCryptoKeySource === sourceKey) {
-            return this.cachedCryptoKeyPromise;
-        }
-        const keyBytes = this.getTextEncoder().encode(sourceKey);
-        const importPromise = crypto.subtle
-            .importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
-            .then((key) => {
-                if (this.printLogs) {
-                    Logger.debug(`Encryption key retrieved successfully`, {
-                        keyLength: sourceKey.length,
-                        keyBytesLength: keyBytes.length,
-                    });
-                }
-                return key;
-            })
-            .catch((error) => {
-                if (this.cachedCryptoKeyPromise === importPromise) {
-                    this.cachedCryptoKeyPromise = undefined;
-                    this.cachedCryptoKeySource = undefined;
-                }
-                throw error;
-            });
-
-        this.cachedCryptoKeySource = sourceKey;
-        this.cachedCryptoKeyPromise = importPromise;
-
-        return importPromise;
-    }
-
-    /**
-     * Encrypts the provided data using AES-GCM encryption with the help of SubtleCrypto API.
-     * Refer to https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt for more technical details.
-     *
-     * Generates a random 12-byte IV for each encryption.
-     * Base64 encodes the IV and the encrypted data and returns the result as a string.
-     *
-     * Requires an encryption key to be configured.
-     * If no encryption key is configured, this method throws.
-     *
-     * @internal
-     *
-     * @param data The data to be encrypted. Should be an instance of DBItem.
-     *
-     * @returns A promise that resolves to the encrypted data as a base64 encoded string.
-     *
-     * @throws {LocalSaveEncryptionKeyError} If the encryption key is not configured.
-     * @throws {LocalSaveError} If the encryption process fails.
+     * @throws {LocalSaveEncryptionKeyError} If the encryption key is not configured or invalid.
+     * @throws {LocalSaveError} If encryption fails.
      */
     private async encryptData(data: DBItem): Promise<DBItemEncryptedBase64> {
-        try {
-            if (!isEncryptionKeyDefined(this.encryptionKey)) {
-                throw new LocalSaveEncryptionKeyError(`Encryption key is not configured`);
-            }
-            const iv = window.crypto.getRandomValues(new Uint8Array(12));
-            const generatedKey = await this.getEncryptKey();
-            const dataBuffer = this.getTextEncoder().encode(JSON.stringify(data));
-            const encryptedData = await window.crypto.subtle.encrypt(
-                {
-                    name: 'AES-GCM',
-                    iv: iv,
-                },
-                generatedKey,
-                dataBuffer,
-            );
-            const ivUint8 = new Uint8Array(iv);
-            const encryptedDataUint8 = new Uint8Array(encryptedData);
-            const concatenatedArray = new Uint8Array(ivUint8.byteLength + encryptedDataUint8.byteLength);
-            concatenatedArray.set(ivUint8, 0);
-            concatenatedArray.set(encryptedDataUint8, ivUint8.byteLength);
-            const base64Data = arrayBufferToBase64(concatenatedArray.buffer);
-            if (this.printLogs) {
-                Logger.debug(`Data encrypted successfully`, {
-                    base64DataLength: base64Data.length,
-                });
-            }
-            return base64Data;
-        } catch (error) {
-            if (this.printLogs) {
-                Logger.error(`Data encryption failed`, error);
-            }
-            throw error;
-        }
+        return this.crypto.encryptData(data);
     }
 
     /**
-     * Decrypts the provided data using the configured encryption key.
-     * Requires an encryption key to be configured.
-     * If no encryption key is configured, this method throws.
+     * Decrypts data using the configured encryption key.
      *
      * @param encryptedBase64Data The data to decrypt, as a string.
+     * @returns {Promise<DBItem>} A promise that resolves to the decrypted data object.
      *
-     * @returns The decrypted data as an object.
-     *
-     * @throws {LocalSaveEncryptionKeyError} If the encryption key is not configured.
-     * @throws {LocalSaveError} If the decryption process fails.
+     * @throws {LocalSaveError} If decryption fails.
      */
     async decryptData(encryptedBase64Data: string): Promise<DBItem> {
-        try {
-            if (!isEncryptionKeyDefined(this.encryptionKey)) {
-                throw new LocalSaveEncryptionKeyError(`Encryption key is not configured`);
-            }
-            const arrayBuffer = base64ToArrayBuffer(encryptedBase64Data);
-            const iv = new Uint8Array(arrayBuffer, 0, 12);
-            const generatedKey = await this.getEncryptKey();
-            const encryptedData = new Uint8Array(arrayBuffer, 12);
-            const decryptedBufferData = await window.crypto.subtle.decrypt(
-                {
-                    name: 'AES-GCM',
-                    iv,
-                },
-                generatedKey,
-                encryptedData,
-            );
-            const decryptedData = JSON.parse(this.getTextDecoder().decode(decryptedBufferData)) as DBItem;
-            if (this.printLogs) {
-                Logger.debug(`Data decrypted successfully`, {
-                    timestamp: decryptedData.timestamp,
-                });
-            }
-            return decryptedData;
-        } catch (error) {
-            if (this.printLogs) {
-                Logger.error(`Data decryption failed`, error);
-            }
-            throw new LocalSaveError(`Data decryption failed`, {
-                cause: error instanceof Error ? error : undefined,
-            });
-        }
+        return this.crypto.decryptData(encryptedBase64Data);
     }
 
     /**
@@ -536,7 +301,7 @@ class LocalSave {
      * @param itemKey The key to identify the stored data.
      * @param data The data to be stored.
      *
-     * @returns A promise that resolves to `true` if the operation was successful.
+     * @returns {Promise<true>} A promise that resolves to `true` if the operation was successful.
      *
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the saving process.
      */
@@ -556,7 +321,7 @@ class LocalSave {
                 payload = await this.encryptData(payload);
             }
             const store = await this.getStore(category, 'readwrite');
-            return this.wrapRequestWithTransaction({
+            return wrapRequestWithTransaction({
                 request: store.put(payload, itemKey),
                 transaction: store.transaction,
                 onRequestError: (error) => {
@@ -614,7 +379,7 @@ class LocalSave {
      * @param category The category from which to retrieve the item.
      * @param itemKey The key of the item to retrieve.
      *
-     * @returns A promise that resolves to the retrieved item or null if not found.
+     * @returns {Promise<DBItem | null>} A promise that resolves to the retrieved item or null if not found.
      *
      * @throws {LocalSaveError} Will reject the promise if an error occurs while decrypting the data. Depending on the 'clearOnDecryptError' configuration, all data for the category can be cleared.
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the retrieval process.
@@ -687,7 +452,7 @@ class LocalSave {
     /**
      * Lists all categories (object stores) currently available in the database.
      *
-     * @returns A promise that resolves to an array of category names.
+     * @returns {Promise<Category[]>} A promise that resolves to an array of category names.
      */
     async listCategories(): Promise<Category[]> {
         if (this.printLogs) {
@@ -701,7 +466,7 @@ class LocalSave {
      *
      * @param category The category from which item keys should be listed.
      *
-     * @returns A promise that resolves to an array of item keys.
+     * @returns {Promise<string[]>} A promise that resolves to an array of item keys.
      *
      * @throws {LocalSaveError} Will reject the promise if an error occurs while listing keys.
      */
@@ -739,7 +504,7 @@ class LocalSave {
      * @param category The category from which the item should be removed.
      * @param itemKey The key of the item to be removed.
      *
-     * @returns A promise that resolves to `true` if the operation was successful.
+     * @returns {Promise<true>} A promise that resolves to `true` if the operation was successful.
      *
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the removal process.
      */
@@ -751,7 +516,7 @@ class LocalSave {
             });
         }
         const store = await this.getStore(category, 'readwrite');
-        return this.wrapRequestWithTransaction({
+        return wrapRequestWithTransaction({
             request: store.delete(itemKey),
             transaction: store.transaction,
             onRequestError: (error: DOMException | null) => {
@@ -800,7 +565,7 @@ class LocalSave {
      *
      * @param category - The category to clear.
      *
-     * @returns A promise that resolves to `true` if the operation was successful.
+     * @returns {Promise<true>} A promise that resolves to `true` if the operation was successful.
      *
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the clearing process.
      */
@@ -809,7 +574,7 @@ class LocalSave {
             Logger.debug(`clear() called to store all data under '${category}' category`);
         }
         const store = await this.getStore(category, 'readwrite');
-        return this.wrapRequestWithTransaction({
+        return wrapRequestWithTransaction({
             request: store.clear(),
             transaction: store.transaction,
             onRequestError: (error) => {
@@ -867,7 +632,7 @@ class LocalSave {
      * @param {number} [thresholdMs=this.expiryThreshold] The threshold in milliseconds to use for expiring data.
      * Defaults to expiryThreshold from config if not provided.
      *
-     * @returns A promise that resolves to `true` if the operation was successful.
+     * @returns {Promise<true>} A promise that resolves to `true` if the operation was successful.
      *
      * @throws {LocalSaveError} - Throws an error if there is an issue scanning entries, decrypting data, or removing expired items.
      */
@@ -1058,7 +823,7 @@ class LocalSave {
     /**
      * Asynchronously destroys the database by deleting it from IndexedDB.
      *
-     * @returns A promise that resolves to `true` if the operation was successful.
+     * @returns {Promise<true>} A promise that resolves to `true` if the operation was successful.
      *
      * @throws {LocalSaveError} Will reject the promise if an error occurs during the deletion process.
      */
@@ -1121,94 +886,5 @@ class LocalSave {
         });
     }
 }
-/**
- * IndexedDB database name.
- */
-export type DBName = string;
-
-/**
- * Raw encryption key string used to derive an AES-GCM key.
- */
-export type EncryptionKey = string;
-
-/**
- * Object store name used as a logical category.
- */
-export type Category = string;
-
-/**
- * Number expected to be positive by runtime validation.
- */
-export type PositiveNumber = number;
-
-/**
- * Canonical record structure stored by LocalSave before encryption.
- */
-export interface DBItem {
-    /** Unix timestamp in milliseconds when the item was written. */
-    timestamp: number;
-    /** User payload associated with the key. */
-    data: unknown;
-}
-
-/**
- * Base64 payload containing IV + encrypted record bytes.
- */
-export type DBItemEncryptedBase64 = string;
-
-/**
- * Configuration options for constructing LocalSave.
- */
-export interface Config {
-    /**
-     * The name of the database to use for local save
-     *
-     * @default "LocalSave"
-     */
-    dbName?: DBName;
-    /**
-     * The key to use for encrypting and decrypting data
-     * Not providing this will store data in plain text
-     * Should be a string without spaces of length 16, 24, or 32 characters
-     *
-     * @default undefined
-     */
-    encryptionKey?: EncryptionKey;
-    /**
-     * The categories to use for storing data
-     * You can use these to separate different types of data
-     *
-     * @default ["userData"]
-     */
-    categories?: Category[];
-    /**
-     * The threshold in milliseconds for expiring data.
-     *
-     * Example day-to-ms conversion: days * 24 * 60 * 60 * 1000
-     *
-     * Default is 30 days - 30 * 24 * 60 * 60 * 1000
-     * @default 2592000000
-     */
-    expiryThreshold?: PositiveNumber;
-    /**
-     * The time in milliseconds to wait before failing blocked IndexedDB open/delete requests.
-     *
-     * @default 10000
-     */
-    blockedTimeoutThreshold?: PositiveNumber;
-    /**
-     * Whether to clear all data for a category if an error occurs while decrypting data
-     * Most likely reason of error is due to an incorrect encryption key
-     *
-     * @default true
-     */
-    clearOnDecryptError?: boolean;
-    /**
-     * Whether to print logs
-     * Includes debug and errors logs
-     *
-     * @default false
-     */
-    printLogs?: boolean;
-}
+export type { Category, Config, DBItem, DBItemEncryptedBase64, DBName, EncryptionKey, PositiveNumber };
 export default LocalSave;
