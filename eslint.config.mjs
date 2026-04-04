@@ -5,7 +5,15 @@ import tseslint from 'typescript-eslint';
 
 export default defineConfig(
     {
-        ignores: ['**/*.js', '**/*.d.ts', 'dist/*', '**/build/*', '**/node_modules/*', '**/.react-router/**'],
+        ignores: [
+            'demo/**',
+            '**/*.js',
+            '**/*.d.ts',
+            'dist/*',
+            '**/build/*',
+            '**/node_modules/*',
+            '**/.react-router/**',
+        ],
     },
     eslint.configs.recommended,
     ...tseslint.configs.recommendedTypeChecked,
