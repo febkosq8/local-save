@@ -22,8 +22,8 @@ describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, after
             `Validating property 'categories'\nExpected: ["userData"]\nActual: ${JSON.stringify(localSave.categories)}`,
         );
         expect(localSave.categories).toEqual(['userData']);
-        debugLog(`Validating property 'expiryThreshold'\nExpected: 30\nActual: ${localSave.expiryThreshold}`);
-        expect(localSave.expiryThreshold).toBe(30);
+        debugLog(`Validating property 'expiryThreshold'\nExpected: 2592000000\nActual: ${localSave.expiryThreshold}`);
+        expect(localSave.expiryThreshold).toBe(30 * 24 * 60 * 60 * 1000);
         debugLog(`Validating property 'clearOnDecryptError'\nExpected: true\nActual: ${localSave.clearOnDecryptError}`);
         expect(localSave.clearOnDecryptError).toBe(true);
         debugLog(`Validating property 'printLogs'\nExpected: false\nActual: ${localSave.printLogs}`);
@@ -38,7 +38,7 @@ describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, after
             encryptionKey: '75Q1SDWH1B6KJIP6',
             categories: ['session', 'cache'],
             clearOnDecryptError: false,
-            expiryThreshold: 7,
+            expiryThreshold: 7000,
             blockedTimeoutThreshold: 15000,
             printLogs: true,
         });
@@ -50,8 +50,8 @@ describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, after
             `Validating property 'categories'\nExpected: ["session", "cache"]\nActual: ${JSON.stringify(localSave.categories)}`,
         );
         expect(localSave.categories).toEqual(['session', 'cache']);
-        debugLog(`Validating property 'expiryThreshold'\nExpected: 7\nActual: ${localSave.expiryThreshold}`);
-        expect(localSave.expiryThreshold).toBe(7);
+        debugLog(`Validating property 'expiryThreshold'\nExpected: 7000\nActual: ${localSave.expiryThreshold}`);
+        expect(localSave.expiryThreshold).toBe(7000);
         debugLog(
             `Validating property 'clearOnDecryptError'\nExpected: false\nActual: ${localSave.clearOnDecryptError}`,
         );
@@ -72,7 +72,7 @@ describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, after
         try {
             localSave = new LocalSave({
                 encryptionKey: 'FXSVGSVFX5KE6LSTZU535JC0H6OXY4KI',
-                expiryThreshold: 15,
+                expiryThreshold: 15000,
                 blockedTimeoutThreshold: 20000,
             });
         } catch (error) {
@@ -81,7 +81,7 @@ describe('LocalSave - Configuration', { tags: ['config'] }, ({ beforeEach, after
         debugLog(`Validating error\nExpected: undefined\nActual: ${String(thrownError)}`);
         expect(thrownError).toBeUndefined();
         expect(localSave?.encryptionKey).toBe('FXSVGSVFX5KE6LSTZU535JC0H6OXY4KI');
-        expect(localSave?.expiryThreshold).toBe(15);
+        expect(localSave?.expiryThreshold).toBe(15000);
         expect(localSave?.blockedTimeoutThreshold).toBe(20000);
 
         if (localSave) {
