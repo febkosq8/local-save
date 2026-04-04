@@ -289,7 +289,11 @@ export default function Demo() {
 
 										return `Data recovered from '${new Date(data.timestamp).toUTCString()}'`;
 									},
-									error: () => {
+									error: (error) => {
+										console.log({ error });
+										if (error.message === "Data decryption failed") {
+											return `Decryption failed for data under '${itemKey}' in '${category}' due to an incorrect/missing encryption key."}`;
+										}
 										setUserData("");
 										return `Failed to fetch data under '${itemKey}' from '${category}'`;
 									},
