@@ -6,8 +6,6 @@
 - Preserve the public API and behavior unless a change request explicitly requires a breaking update.
 - Keep runtime dependencies at zero unless explicitly requested.
 
-## Implementation Guidance
-
 ## Current Implementation Details (Source of Truth)
 
 - Core implementation lives in `src/index.ts` in class `LocalSave`; preserve method signatures and return contracts.
@@ -60,6 +58,18 @@
 - Follow existing naming, file layout, and TypeScript patterns already used in `src/`.
 - Avoid changing unrelated files or formatting outside the task scope.
 - Keep comments concise and only where logic is not obvious.
+- Use `pnpm` as the package manager for install, run, and script commands instead of `npm`.
+
+## Documentation Expectations
+
+- JSDoc is required for public API surface and non-trivial internal behavior; it is not optional.
+- TypeScript typing discipline is required; avoid `any` unless there is a justified, documented reason.
+- When refactoring or moving logic, preserve existing JSDoc intent and coverage in the new location.
+- If a method has JSDoc, it must document all parameters with `@param`, including nested properties (for example `options.key`) when the parameter is an object.
+- If a method has JSDoc, it must include an explicit typed `@returns` tag (for example `@returns {Promise<DBItem | null>}`) describing the resolved/returned type and meaning.
+- If a method has JSDoc, it must include explicit `@throws` tags for the errors it can throw or reject with.
+- If a method is private and has JSDoc, it must be marked with `@internal`.
+- JSDoc tag blocks must use consistent spacing: insert one blank line between `@param` and `@returns`, and one blank line between `@returns` and `@throws`.
 
 ## Safety and API Expectations
 
