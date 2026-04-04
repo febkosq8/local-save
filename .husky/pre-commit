@@ -1,1 +1,2 @@
-pnpm exec prettier --check .
+pnpm exec prettier --write .
+git add -u -- . ':(exclude)demo/**'
