@@ -108,8 +108,8 @@ export default function Demo() {
 						<label
 							className={cx(hasEncryptionKey ? (hasValidEncryptionKeyLength ? "text-green-500" : "text-red-800") : "")}
 						>
-							{`Encryption key (${encryptionKeyLength} length)`}
-
+							Encryption key
+							<span className="block text-xs text-muted-foreground">{encryptionKeyLength} characters</span>
 							<div className="grid md:grid-cols-2 grid-cols-1 gap-4">
 								<Input
 									type="text"
