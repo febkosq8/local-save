@@ -419,7 +419,7 @@ describe('LocalSave - Integration', { tags: ['integration'] }, ({ beforeEach, af
 
         vi.setSystemTime(baseTime.getTime() + 2 * 24 * 60 * 60 * 1000);
 
-        debugLog('Setting fresh item two days after base time (in ms)');
+        debugLog('Setting fresh item two days after base time');
         const freshSetResult = await localSave.set('userData', freshKey, freshData);
         debugLog(`Validating set() result for fresh item\nExpected: true\nActual: ${freshSetResult}`);
         expect(freshSetResult).toBe(true);

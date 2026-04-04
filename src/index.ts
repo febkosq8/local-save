@@ -1184,8 +1184,10 @@ export interface Config {
     /**
      * The threshold in milliseconds for expiring data.
      *
-     * Total = days * hours * minutes * seconds * milliseconds
-     * @default 30 * 24 * 60 * 60 * 1000 = 2592000000
+     * Example day-to-ms conversion: days * 24 * 60 * 60 * 1000
+     *
+     * Default is 30 days - 30 * 24 * 60 * 60 * 1000
+     * @default 2592000000
      */
     expiryThreshold?: PositiveNumber;
     /**
