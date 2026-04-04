@@ -44,14 +44,15 @@ pnpm add @febkosq8/local-save
 
 ### Configuration Options
 
-| Option Key                | Type       | Default        | Description                                                                                                                                            |
-| ------------------------- | ---------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **_dbName_**              | `string`   | `"LocalSave"`  | Name of the IndexedDB database.                                                                                                                        |
-| **_encryptionKey_**       | `string`   | `undefined`    | Encryption key that should be either [16, 24, or 32] characters to be used for AES-GCM encryption. If not provided, data will be stored in plain text. |
-| **_categories_**          | `string[]` | `["userData"]` | Array of categories (Object store names).                                                                                                              |
-| **_expiryThreshold_**     | `number`   | `30`           | Data expiration threshold in days.                                                                                                                     |
-| **_clearOnDecryptError_** | `boolean`  | `true`         | Whether to clear a category if decryption fails.                                                                                                       |
-| **_printLogs_**           | `boolean`  | `false`        | Whether to print logs (Debug and errors).                                                                                                              |
+| Option Key                    | Type       | Default        | Description                                                                                                                                            |
+| ----------------------------- | ---------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **_dbName_**                  | `string`   | `"LocalSave"`  | Name of the IndexedDB database.                                                                                                                        |
+| **_encryptionKey_**           | `string`   | `undefined`    | Encryption key that should be either [16, 24, or 32] characters to be used for AES-GCM encryption. If not provided, data will be stored in plain text. |
+| **_categories_**              | `string[]` | `["userData"]` | Array of categories (Object store names).                                                                                                              |
+| **_expiryThreshold_**         | `number`   | `30`           | Data expiration threshold in days.                                                                                                                     |
+| **_blockedTimeoutThreshold_** | `number`   | `10000`        | Timeout in milliseconds before blocked IndexedDB open/delete requests fail.                                                                            |
+| **_clearOnDecryptError_**     | `boolean`  | `true`         | Whether to clear a category if decryption fails.                                                                                                       |
+| **_printLogs_**               | `boolean`  | `false`        | Whether to print logs (Debug and errors).                                                                                                              |
 
 ### Initialization
 
@@ -64,6 +65,7 @@ const localSaveConfig = {
   encryptionKey: "MyRandEncryptKeyThatIs32CharLong", // Encryption key for data
   categories: ["userData", "settings"], // Define categories for data storage
   expiryThreshold: 14, // Clear data older than 14 days
+  blockedTimeoutThreshold: 15000, // Wait up to 15s when IndexedDB requests are blocked
 };
 const localSave = new LocalSave(localSaveConfig);
 ```
