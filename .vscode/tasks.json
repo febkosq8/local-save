@@ -2,6 +2,23 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "pnpm: release",
+            "type": "shell",
+            "command": "pnpm",
+            "args": ["run", "release:${input:releaseType}"],
+            "dependsOn": ["pnpm: test (release gate)"],
+            "dependsOrder": "sequence",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "pnpm: test (release gate)",
+            "type": "shell",
+            "command": "pnpm",
+            "args": ["test"],
+            "problemMatcher": []
+        },
+        {
             "label": "npm: deprecate version",
             "type": "shell",
             "command": "npm",
@@ -14,6 +31,13 @@
         }
     ],
     "inputs": [
+        {
+            "id": "releaseType",
+            "type": "pickString",
+            "description": "Select release type",
+            "options": ["patch", "minor", "major"],
+            "default": "patch"
+        },
         {
             "id": "deprecateVersion",
             "type": "promptString",
