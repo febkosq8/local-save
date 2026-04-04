@@ -2,16 +2,23 @@ import { Button } from "@feb/components/ui/Button";
 import Input from "@feb/components/ui/Input";
 import { Switch } from "@feb/components/ui/Switch";
 import TextArea from "@feb/components/ui/TextArea";
-import LocalSave from "@febkosq8/local-save";
+import LocalSave, { type Config } from "@febkosq8/local-save";
 import { cx, Dropdown } from "@rinzai/zen";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { formatDurationFromMs } from "@feb/utils/formatDurationFromMs";
+
+type DemoLocalSaveConfig = Omit<Required<Config>, "encryptionKey"> & {
+	encryptionKey: string | undefined;
+};
+
 export default function Demo() {
-	const [localSaveConfig, setLocalSaveConfig] = useState({
+	const [localSaveConfig, setLocalSaveConfig] = useState<DemoLocalSaveConfig>({
 		dbName: "LocalSave",
-		encryptionKey: "",
+		encryptionKey: undefined,
 		categories: ["userData", "userSettings"],
-		expiryThreshold: 1,
+		expiryThreshold: 24 * 60 * 60 * 1000,
+		blockedTimeoutThreshold: 10000,
 		clearOnDecryptError: false,
 		printLogs: false,
 	});
@@ -20,6 +27,11 @@ export default function Demo() {
 	const [itemKey, setItemKey] = useState("test");
 	const [userData, setUserData] = useState<string>();
 	const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+	const encryptionKeyLength = localSaveConfig.encryptionKey?.length ?? 0;
+	const hasEncryptionKey = encryptionKeyLength > 0;
+	const hasValidEncryptionKeyLength = [16, 24, 32].includes(encryptionKeyLength);
+	const expiryThresholdReadable = formatDurationFromMs(localSaveConfig.expiryThreshold);
+	const blockedTimeoutReadable = formatDurationFromMs(localSaveConfig.blockedTimeoutThreshold);
 
 	return (
 		<div className="flex flex-col  w-full p-5 gap-4">
@@ -72,15 +84,34 @@ export default function Demo() {
 							/>
 						</label>
 						<label>
-							Expiry threshold
+							Expiry threshold (ms)
+							<span className="block text-xs text-muted-foreground">~ {expiryThresholdReadable}</span>
 							<Input
 								type="number"
 								value={localSaveConfig.expiryThreshold ?? ""}
-								min={0}
-								placeholder={"Item key"}
+								min={1}
+								placeholder={"Expiry threshold in milliseconds"}
 								onChange={(e) => {
+									const nextValue = Number(e.target.value);
 									setLocalSaveConfig((curr) => {
-										curr.expiryThreshold = +e.target.value;
+										curr.expiryThreshold = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 1;
+										return structuredClone(curr);
+									});
+								}}
+							/>
+						</label>
+						<label>
+							Blocked timeout threshold (ms)
+							<span className="block text-xs text-muted-foreground">~ {blockedTimeoutReadable}</span>
+							<Input
+								type="number"
+								value={localSaveConfig.blockedTimeoutThreshold ?? ""}
+								min={1}
+								placeholder={"Blocked timeout threshold in milliseconds"}
+								onChange={(e) => {
+									const nextValue = Number(e.target.value);
+									setLocalSaveConfig((curr) => {
+										curr.blockedTimeoutThreshold = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 10000;
 										return structuredClone(curr);
 									});
 								}}
@@ -89,21 +120,21 @@ export default function Demo() {
 					</div>
 					<label
 						className={cx(
-							localSaveConfig.encryptionKey?.length > 0
-								? [16, 24, 32].includes(localSaveConfig.encryptionKey?.length)
+							hasEncryptionKey
+								? hasValidEncryptionKeyLength
 									? "text-green-500"
 									: "text-red-800"
 								: "",
 						)}
 					>
-						{`Encryption key (${localSaveConfig.encryptionKey?.length ?? 0} length)`}
+						{`Encryption key (${encryptionKeyLength} length)`}
 
 						<div className="grid md:grid-cols-2 grid-cols-1 gap-4">
 							<Input
 								type="text"
 								className={cx(
-									localSaveConfig.encryptionKey?.length > 0
-										? [16, 24, 32].includes(localSaveConfig.encryptionKey?.length)
+									hasEncryptionKey
+										? hasValidEncryptionKeyLength
 											? "border-green-500"
 											: "border-red-800"
 										: "",
@@ -130,7 +161,7 @@ export default function Demo() {
 								>
 									Generate Random
 								</Button>
-								{localSaveConfig.encryptionKey?.length > 0 && (
+								{hasEncryptionKey && (
 									<>
 										<Button
 											onClick={() => {
@@ -145,7 +176,7 @@ export default function Demo() {
 										</Button>
 										<Button
 											onClick={async () => {
-												await navigator.clipboard.writeText(localSaveConfig.encryptionKey);
+												await navigator.clipboard.writeText(localSaveConfig.encryptionKey ?? "");
 											}}
 											variant={"secondary"}
 										>
@@ -247,12 +278,22 @@ export default function Demo() {
 								toast.promise(localSave.get(category, itemKey), {
 									loading: `Fetching data under '${itemKey}' from ${category}`,
 									success: (data) => {
-										setUserData(data?.data as string);
-										return `Data recovered from '${new Date(data?.timestamp ?? "").toUTCString()}`;
+										if (!data) {
+											setUserData("");
+											return `No data found with key '${itemKey}' in '${category}'`;
+										}
+
+										if (typeof data.data === "string") {
+											setUserData(data.data);
+										} else {
+											setUserData(JSON.stringify(data.data, null, 2));
+										}
+
+										return `Data recovered from '${new Date(data.timestamp).toUTCString()}'`;
 									},
 									error: () => {
 										setUserData("");
-										return "No data found with that key in current LocalSave category";
+										return `Failed to fetch data under '${itemKey}' from '${category}'`;
 									},
 								});
 							}}
@@ -298,14 +339,14 @@ export default function Demo() {
 						<Button
 							onClick={() => {
 								toast.promise(localSave.expire(localSaveConfig.expiryThreshold), {
-									loading: `Expiring data older than ${localSaveConfig.expiryThreshold} days`,
-									success: `Expired data older than ${localSaveConfig.expiryThreshold} days`,
-									error: `Failed to expire data older than ${localSaveConfig.expiryThreshold} days`,
+									loading: `Expiring data older than ${expiryThresholdReadable} (${localSaveConfig.expiryThreshold} ms)`,
+									success: `Expired data older than ${expiryThresholdReadable} (${localSaveConfig.expiryThreshold} ms)`,
+									error: `Failed to expire data older than ${expiryThresholdReadable} (${localSaveConfig.expiryThreshold} ms)`,
 								});
 							}}
 							variant={"destructive"}
 						>
-							{`Expire data older than ${localSaveConfig.expiryThreshold} days`}
+							{`Expire data older than ${expiryThresholdReadable}`}
 						</Button>
 					</div>
 				</div>
