@@ -1,5 +1,3 @@
-import { faCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Switch as SwitchBase } from "@headlessui/react";
 import { cva, cx } from "@rinzai/zen";
 interface SwitchProps {
@@ -28,17 +26,17 @@ const Switch = ({
 			{children ? (
 				children(checked)
 			) : (
-				<div className="relative w-full h-full">
-					<FontAwesomeIcon
-						icon={faCircle}
-						className={cx(
-							`absolute top-1/2 transform -translate-y-1/2 `,
-							checked ? "left-6 text-blue-600" : "left-1 text-blue-600",
-							disabled && "text-gray-400 dark:text-gray-200",
-							`inline-block h-4 w-4 rounded-full border border-blue-500 [transition:all_0.5s_cubic-bezier(1,0,0,1)]`,
-						)}
-					/>
-				</div>
+				<span
+					className={cx(
+						"pointer-events-none inline-block h-4 w-4 transform rounded-full ring-1 ring-black/10 transition-transform duration-300 ease-out border border-blue-500",
+						checked
+							? "bg-blue-600 border-blue-600"
+							: disabled
+								? "bg-gray-300 dark:bg-gray-400 border-gray-400 dark:border-gray-500 shadow-[0_0_0_2px_rgba(120,120,120,0.3)]"
+								: "bg-gray-200 dark:bg-gray-700 border-gray-500 dark:border-gray-300 shadow-[0_0_0_2px_rgba(120,120,120,0.5)]",
+						checked ? "translate-x-6" : "translate-x-1"
+					)}
+				/>
 			)}
 		</SwitchBase>
 	);

@@ -38,7 +38,7 @@ export default function Demo() {
 			<div className="flex flex-col p-6 border border-border rounded grow">
 				<h3>Configuration</h3>
 				<div className="mt-6 flex-col flex gap-4">
-					<div className="grid md:grid-cols-2 grid-cols-1 gap-4">
+					<div className="grid md:grid-cols-2 grid-cols-1 gap-4 items-start">
 						<label>
 							Database name
 							<Input
@@ -53,6 +53,118 @@ export default function Demo() {
 									});
 								}}
 							/>
+						</label>
+						<label>
+							Item key
+							<Input
+								type="text"
+								className="w-full"
+								value={itemKey ?? ""}
+								placeholder={"Item key"}
+								onChange={(e) => {
+									setItemKey(e.target.value);
+								}}
+							/>
+						</label>
+						<label>
+							Expiry threshold (ms)
+							<span className="block text-xs text-muted-foreground">~ {expiryThresholdReadable}</span>
+							<Input
+								type="number"
+								className="w-full"
+								value={localSaveConfig.expiryThreshold ?? ""}
+								min={1}
+								placeholder={"Expiry threshold in milliseconds"}
+								onChange={(e) => {
+									const nextValue = Number(e.target.value);
+									setLocalSaveConfig((curr) => {
+										curr.expiryThreshold = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 1;
+										return structuredClone(curr);
+									});
+								}}
+							/>
+						</label>
+						<label>
+							Blocked timeout threshold (ms)
+							<span className="block text-xs text-muted-foreground">~ {blockedTimeoutReadable}</span>
+							<Input
+								type="number"
+								className="w-full"
+								value={localSaveConfig.blockedTimeoutThreshold ?? ""}
+								min={1}
+								placeholder={"Blocked timeout threshold in milliseconds"}
+								onChange={(e) => {
+									const nextValue = Number(e.target.value);
+									setLocalSaveConfig((curr) => {
+										curr.blockedTimeoutThreshold = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 10000;
+										return structuredClone(curr);
+									});
+								}}
+							/>
+						</label>
+					</div>
+
+					<div className="grid md:grid-cols-2 grid-cols-1 gap-4">
+						<label
+							className={cx(hasEncryptionKey ? (hasValidEncryptionKeyLength ? "text-green-500" : "text-red-800") : "")}
+						>
+							{`Encryption key (${encryptionKeyLength} length)`}
+
+							<div className="grid md:grid-cols-2 grid-cols-1 gap-4">
+								<Input
+									type="text"
+									className={cx(
+										hasEncryptionKey ? (hasValidEncryptionKeyLength ? "border-green-500" : "border-red-800") : "",
+									)}
+									value={localSaveConfig?.encryptionKey ?? ""}
+									placeholder={"Encryption key"}
+									onChange={(e) => {
+										setLocalSaveConfig((curr) => {
+											curr.encryptionKey = e.target.value;
+											return structuredClone(curr);
+										});
+									}}
+								/>
+								<div className="gap-2 flex flex-col md:flex-row ">
+									<Button
+										onClick={() => {
+											setLocalSaveConfig((curr) => {
+												curr.encryptionKey = Array.from({ length: 32 }, () =>
+													Math.floor(Math.random() * 36).toString(36),
+												)
+													.join("")
+													.toUpperCase();
+												return structuredClone(curr);
+											});
+										}}
+									>
+										Generate Random
+									</Button>
+									{hasEncryptionKey && (
+										<>
+											<Button
+												onClick={() => {
+													setLocalSaveConfig((curr) => {
+														curr.encryptionKey = "";
+														return structuredClone(curr);
+													});
+												}}
+												variant={"destructive"}
+											>
+												Clear
+											</Button>
+											<Button
+												onClick={async () => {
+													await navigator.clipboard.writeText(localSaveConfig.encryptionKey ?? "");
+												}}
+												variant={"secondary"}
+											>
+												Copy
+											</Button>
+										</>
+									)}
+								</div>
+							</div>
 						</label>
 						<label>
 							Category
@@ -72,145 +184,31 @@ export default function Demo() {
 								}}
 							/>
 						</label>
-						<label>
-							Item key
-							<Input
-								type="text"
-								value={itemKey ?? ""}
-								placeholder={"Item key"}
+						<label className="inline-flex flex-row items-center justify-start w-fit">
+							Print logs
+							<Switch
+								checked={localSaveConfig.printLogs}
 								onChange={(e) => {
-									setItemKey(e.target.value);
-								}}
-							/>
-						</label>
-						<label>
-							Expiry threshold (ms)
-							<span className="block text-xs text-muted-foreground">~ {expiryThresholdReadable}</span>
-							<Input
-								type="number"
-								value={localSaveConfig.expiryThreshold ?? ""}
-								min={1}
-								placeholder={"Expiry threshold in milliseconds"}
-								onChange={(e) => {
-									const nextValue = Number(e.target.value);
 									setLocalSaveConfig((curr) => {
-										curr.expiryThreshold = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 1;
+										curr.printLogs = e;
 										return structuredClone(curr);
 									});
 								}}
 							/>
 						</label>
-						<label>
-							Blocked timeout threshold (ms)
-							<span className="block text-xs text-muted-foreground">~ {blockedTimeoutReadable}</span>
-							<Input
-								type="number"
-								value={localSaveConfig.blockedTimeoutThreshold ?? ""}
-								min={1}
-								placeholder={"Blocked timeout threshold in milliseconds"}
+						<label className="inline-flex flex-row items-center justify-start w-fit">
+							Clear storage on decrypt error
+							<Switch
+								checked={localSaveConfig.clearOnDecryptError}
 								onChange={(e) => {
-									const nextValue = Number(e.target.value);
 									setLocalSaveConfig((curr) => {
-										curr.blockedTimeoutThreshold = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 10000;
+										curr.clearOnDecryptError = e;
 										return structuredClone(curr);
 									});
 								}}
 							/>
 						</label>
 					</div>
-					<label
-						className={cx(
-							hasEncryptionKey
-								? hasValidEncryptionKeyLength
-									? "text-green-500"
-									: "text-red-800"
-								: "",
-						)}
-					>
-						{`Encryption key (${encryptionKeyLength} length)`}
-
-						<div className="grid md:grid-cols-2 grid-cols-1 gap-4">
-							<Input
-								type="text"
-								className={cx(
-									hasEncryptionKey
-										? hasValidEncryptionKeyLength
-											? "border-green-500"
-											: "border-red-800"
-										: "",
-								)}
-								value={localSaveConfig?.encryptionKey ?? ""}
-								placeholder={"Encryption key"}
-								onChange={(e) => {
-									setLocalSaveConfig((curr) => {
-										curr.encryptionKey = e.target.value;
-										return structuredClone(curr);
-									});
-								}}
-							/>
-							<div className="gap-2 flex flex-col md:flex-row ">
-								<Button
-									onClick={() => {
-										setLocalSaveConfig((curr) => {
-											curr.encryptionKey = Array.from({ length: 32 }, () => Math.floor(Math.random() * 36).toString(36))
-												.join("")
-												.toUpperCase();
-											return structuredClone(curr);
-										});
-									}}
-								>
-									Generate Random
-								</Button>
-								{hasEncryptionKey && (
-									<>
-										<Button
-											onClick={() => {
-												setLocalSaveConfig((curr) => {
-													curr.encryptionKey = "";
-													return structuredClone(curr);
-												});
-											}}
-											variant={"destructive"}
-										>
-											Clear
-										</Button>
-										<Button
-											onClick={async () => {
-												await navigator.clipboard.writeText(localSaveConfig.encryptionKey ?? "");
-											}}
-											variant={"secondary"}
-										>
-											Copy
-										</Button>
-									</>
-								)}
-							</div>
-						</div>
-					</label>
-					<label className="inline-flex flex-row items-center justify-start w-fit">
-						Print logs
-						<Switch
-							checked={localSaveConfig.printLogs}
-							onChange={(e) => {
-								setLocalSaveConfig((curr) => {
-									curr.printLogs = e;
-									return structuredClone(curr);
-								});
-							}}
-						/>
-					</label>
-					<label className="inline-flex flex-row items-center justify-start w-fit">
-						Clear storage on decrypt error
-						<Switch
-							checked={localSaveConfig.clearOnDecryptError}
-							onChange={(e) => {
-								setLocalSaveConfig((curr) => {
-									curr.clearOnDecryptError = e;
-									return structuredClone(curr);
-								});
-							}}
-						/>
-					</label>
 				</div>
 			</div>
 			<div className="flex flex-col p-6 border border-border rounded grow">
