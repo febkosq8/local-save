@@ -34,7 +34,7 @@ const Switch = ({
 							: disabled
 								? "bg-gray-300 dark:bg-gray-400 border-gray-400 dark:border-gray-500 shadow-[0_0_0_2px_rgba(120,120,120,0.3)]"
 								: "bg-gray-200 dark:bg-gray-700 border-gray-500 dark:border-gray-300 shadow-[0_0_0_2px_rgba(120,120,120,0.5)]",
-						checked ? "translate-x-6" : "translate-x-1"
+						checked ? "translate-x-6" : "translate-x-1",
 					)}
 				/>
 			)}
