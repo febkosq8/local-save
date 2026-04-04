@@ -6,7 +6,11 @@
             "type": "shell",
             "command": "pnpm",
             "args": ["run", "release:${input:releaseType}"],
-            "dependsOn": ["pnpm: test (release gate)"],
+            "dependsOn": [
+                "pnpm: test (release gate)",
+                "pnpm: build (release gate)",
+                "npm: package owner check (release gate)"
+            ],
             "dependsOrder": "sequence",
             "group": "build",
             "problemMatcher": []
@@ -16,6 +20,26 @@
             "type": "shell",
             "command": "pnpm",
             "args": ["test"],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "pnpm: build (release gate)",
+            "type": "shell",
+            "command": "pnpm",
+            "args": ["build"],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "npm: package owner check (release gate)",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-lc",
+                "set -euo pipefail; REGISTRY=https://registry.npmjs.org; PACKAGE=@febkosq8/local-save; USERNAME=$(npm whoami --registry \"$REGISTRY\"); OWNERS=$(npm owner ls \"$PACKAGE\" --registry \"$REGISTRY\"); echo \"npm user: $USERNAME\"; echo \"owners for $PACKAGE:\"; echo \"$OWNERS\"; if ! printf '%s\\n' \"$OWNERS\" | grep -Eq \"^${USERNAME}[[:space:]]\"; then echo \"ERROR: $USERNAME is not an owner of $PACKAGE\" >&2; exit 1; fi; echo \"owner check passed for $USERNAME\""
+            ],
+            "group": "build",
             "problemMatcher": []
         },
         {
