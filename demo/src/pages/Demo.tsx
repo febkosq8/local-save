@@ -69,7 +69,7 @@ export default function Demo() {
 						</label>
 						<label>
 							Expiry threshold (ms)
-							<span className="block text-xs text-muted-foreground">~ {expiryThresholdReadable}</span>
+							<span className="block text-sm text-muted-foreground">~ {expiryThresholdReadable}</span>
 							<Input
 								type="number"
 								className="w-full"
@@ -87,7 +87,7 @@ export default function Demo() {
 						</label>
 						<label>
 							Blocked timeout threshold (ms)
-							<span className="block text-xs text-muted-foreground">~ {blockedTimeoutReadable}</span>
+							<span className="block text-sm text-muted-foreground">~ {blockedTimeoutReadable}</span>
 							<Input
 								type="number"
 								className="w-full"
@@ -110,7 +110,7 @@ export default function Demo() {
 							Encryption key
 							<span
 								className={cx(
-									"block text-xs text-muted-foreground",
+									"block text-sm text-muted-foreground",
 									hasEncryptionKeyInput ? (hasValidEncryptionKeyInputLength ? "text-green-500" : "text-red-800") : "",
 								)}
 							>
@@ -128,6 +128,11 @@ export default function Demo() {
 										if ([16, 24, 32].includes(newValue.length)) {
 											setLocalSaveConfig((curr) => {
 												curr.encryptionKey = newValue;
+												return structuredClone(curr);
+											});
+										} else {
+											setLocalSaveConfig((curr) => {
+												curr.encryptionKey = undefined;
 												return structuredClone(curr);
 											});
 										}
