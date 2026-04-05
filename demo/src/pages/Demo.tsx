@@ -27,9 +27,10 @@ export default function Demo() {
 	const [itemKey, setItemKey] = useState("test");
 	const [userData, setUserData] = useState<string>();
 	const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-	const encryptionKeyLength = localSaveConfig.encryptionKey?.length ?? 0;
-	const hasEncryptionKey = encryptionKeyLength > 0;
-	const hasValidEncryptionKeyLength = [16, 24, 32].includes(encryptionKeyLength);
+	const [encryptionKeyInputValue, setEncryptionKeyInputValue] = useState<string>(localSaveConfig.encryptionKey ?? "");
+	const encryptionKeyInputLength = encryptionKeyInputValue.length;
+	const hasEncryptionKeyInput = encryptionKeyInputLength > 0;
+	const hasValidEncryptionKeyInputLength = [16, 24, 32].includes(encryptionKeyInputLength);
 	const expiryThresholdReadable = formatDurationFromMs(localSaveConfig.expiryThreshold);
 	const blockedTimeoutReadable = formatDurationFromMs(localSaveConfig.blockedTimeoutThreshold);
 
@@ -105,63 +106,88 @@ export default function Demo() {
 					</div>
 
 					<div className="grid md:grid-cols-2 grid-cols-1 gap-4">
-						<label
-							className={cx(hasEncryptionKey ? (hasValidEncryptionKeyLength ? "text-green-500" : "text-red-800") : "")}
-						>
+						<label>
 							Encryption key
-							<span className="block text-xs text-muted-foreground">{encryptionKeyLength} characters</span>
+							<span
+								className={cx(
+									"block text-xs text-muted-foreground",
+									hasEncryptionKeyInput ? (hasValidEncryptionKeyInputLength ? "text-green-500" : "text-red-800") : "",
+								)}
+							>
+								{encryptionKeyInputLength} characters
+							</span>
 							<div className="grid md:grid-cols-2 grid-cols-1 gap-4">
 								<Input
 									type="text"
 									className={cx(
-										hasEncryptionKey ? (hasValidEncryptionKeyLength ? "border-green-500" : "border-red-800") : "",
+										hasEncryptionKeyInput
+											? hasValidEncryptionKeyInputLength
+												? "border-green-500"
+												: "border-red-800"
+											: "",
 									)}
-									value={localSaveConfig?.encryptionKey ?? ""}
+									value={encryptionKeyInputValue}
 									placeholder={"Encryption key"}
+									debounceThresholdMs={500}
 									onChange={(e) => {
-										setLocalSaveConfig((curr) => {
-											curr.encryptionKey = e.target.value;
-											return structuredClone(curr);
-										});
+										const newValue = e.target.value;
+										setEncryptionKeyInputValue(newValue);
+										if ([16, 24, 32].includes(newValue.length)) {
+											setLocalSaveConfig((curr) => {
+												curr.encryptionKey = newValue;
+												return structuredClone(curr);
+											});
+										}
+									}}
+									onDebouncedChange={(e) => {
+										const newValue = e.target.value;
+										if (![16, 24, 32].includes(newValue.length)) {
+											toast.error("Encryption key must be either 16, 24, or 32 characters long");
+										}
 									}}
 								/>
 								<div className="gap-2 flex flex-col md:flex-row ">
 									<Button
 										onClick={() => {
+											const newValue = Array.from({ length: 32 }, () => Math.floor(Math.random() * 36).toString(36))
+												.join("")
+												.toUpperCase();
+											setEncryptionKeyInputValue(newValue);
 											setLocalSaveConfig((curr) => {
-												curr.encryptionKey = Array.from({ length: 32 }, () =>
-													Math.floor(Math.random() * 36).toString(36),
-												)
-													.join("")
-													.toUpperCase();
+												curr.encryptionKey = newValue;
 												return structuredClone(curr);
 											});
 										}}
 									>
 										Generate Random
 									</Button>
-									{hasEncryptionKey && (
-										<>
-											<Button
-												onClick={() => {
-													setLocalSaveConfig((curr) => {
-														curr.encryptionKey = "";
-														return structuredClone(curr);
-													});
-												}}
-												variant={"destructive"}
-											>
-												Clear
-											</Button>
-											<Button
-												onClick={async () => {
-													await navigator.clipboard.writeText(localSaveConfig.encryptionKey ?? "");
-												}}
-												variant={"secondary"}
-											>
-												Copy
-											</Button>
-										</>
+									{hasEncryptionKeyInput && (
+										<Button
+											onClick={() => {
+												setEncryptionKeyInputValue("");
+												setLocalSaveConfig((curr) => {
+													curr.encryptionKey = undefined;
+													return structuredClone(curr);
+												});
+											}}
+											variant={"destructive"}
+										>
+											Clear
+										</Button>
+									)}
+									{hasEncryptionKeyInput && hasValidEncryptionKeyInputLength && (
+										<Button
+											onClick={async () => {
+												toast.promise(navigator.clipboard.writeText(localSaveConfig.encryptionKey ?? ""), {
+													loading: `Copying encryption key`,
+													success: `Copied encryption key`,
+													error: `Failed to copy encryption key`,
+												});
+											}}
+											variant={"secondary"}
+										>
+											Copy
+										</Button>
 									)}
 								</div>
 							</div>

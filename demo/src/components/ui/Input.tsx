@@ -3,10 +3,11 @@ import React, { ComponentPropsWithoutRef, useRef, useState, useEffect, useCallba
 
 type InputProps = ComponentPropsWithoutRef<"input"> & {
 	debounceThresholdMs?: number;
+	onDebouncedChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-	({ className, onChange, value, debounceThresholdMs, ...rest }, ref) => {
+	({ className, onChange, onDebouncedChange, value, debounceThresholdMs, ...rest }, ref) => {
 		const [internalValue, setInternalValue] = useState(value ?? "");
 		const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 		const isControlled = value !== undefined;
@@ -15,22 +16,24 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 			if (isControlled) setInternalValue(value as string);
 		}, [value, isControlled]);
 
+		// Immediate change handler
 		const handleChange = useCallback(
 			(e: React.ChangeEvent<HTMLInputElement>) => {
 				const newValue = e.target.value;
 				if (!isControlled) setInternalValue(newValue);
-				if (timeoutRef.current) clearTimeout(timeoutRef.current);
-				if (onChange) {
+				if (onChange) onChange(e);
+				if (onDebouncedChange) {
+					if (timeoutRef.current) clearTimeout(timeoutRef.current);
 					if (debounceThresholdMs && debounceThresholdMs > 0) {
 						timeoutRef.current = setTimeout(() => {
-							onChange(e);
+							onDebouncedChange(e);
 						}, debounceThresholdMs);
 					} else {
-						onChange(e);
+						onDebouncedChange(e);
 					}
 				}
 			},
-			[onChange, debounceThresholdMs, isControlled],
+			[onChange, onDebouncedChange, debounceThresholdMs, isControlled],
 		);
 
 		useEffect(() => {
