@@ -2,16 +2,23 @@ import { Button } from "@feb/components/ui/Button";
 import Input from "@feb/components/ui/Input";
 import { Switch } from "@feb/components/ui/Switch";
 import TextArea from "@feb/components/ui/TextArea";
-import LocalSave from "@febkosq8/local-save";
+import LocalSave, { type Config } from "@febkosq8/local-save";
 import { cx, Dropdown } from "@rinzai/zen";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { formatDurationFromMs } from "@feb/utils/formatDurationFromMs";
+
+type DemoLocalSaveConfig = Omit<Required<Config>, "encryptionKey"> & {
+	encryptionKey: string | undefined;
+};
+
 export default function Demo() {
-	const [localSaveConfig, setLocalSaveConfig] = useState({
+	const [localSaveConfig, setLocalSaveConfig] = useState<DemoLocalSaveConfig>({
 		dbName: "LocalSave",
-		encryptionKey: "",
+		encryptionKey: undefined,
 		categories: ["userData", "userSettings"],
-		expiryThreshold: 1,
+		expiryThreshold: 24 * 60 * 60 * 1000,
+		blockedTimeoutThreshold: 10000,
 		clearOnDecryptError: false,
 		printLogs: false,
 	});
@@ -20,13 +27,19 @@ export default function Demo() {
 	const [itemKey, setItemKey] = useState("test");
 	const [userData, setUserData] = useState<string>();
 	const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+	const [encryptionKeyInputValue, setEncryptionKeyInputValue] = useState<string>(localSaveConfig.encryptionKey ?? "");
+	const encryptionKeyInputLength = encryptionKeyInputValue.length;
+	const hasEncryptionKeyInput = encryptionKeyInputLength > 0;
+	const hasValidEncryptionKeyInputLength = [16, 24, 32].includes(encryptionKeyInputLength);
+	const expiryThresholdReadable = formatDurationFromMs(localSaveConfig.expiryThreshold);
+	const blockedTimeoutReadable = formatDurationFromMs(localSaveConfig.blockedTimeoutThreshold);
 
 	return (
 		<div className="flex flex-col  w-full p-5 gap-4">
 			<div className="flex flex-col p-6 border border-border rounded grow">
 				<h3>Configuration</h3>
 				<div className="mt-6 flex-col flex gap-4">
-					<div className="grid md:grid-cols-2 grid-cols-1 gap-4">
+					<div className="grid md:grid-cols-2 grid-cols-1 gap-4 items-start">
 						<label>
 							Database name
 							<Input
@@ -41,6 +54,141 @@ export default function Demo() {
 									});
 								}}
 							/>
+						</label>
+						<label>
+							Item key
+							<Input
+								type="text"
+								className="w-full"
+								value={itemKey ?? ""}
+								placeholder={"Item key"}
+								onChange={(e) => {
+									setItemKey(e.target.value);
+								}}
+							/>
+						</label>
+						<label>
+							Expiry threshold (ms)
+							<span className="block text-sm text-muted-foreground">~ {expiryThresholdReadable}</span>
+							<Input
+								type="number"
+								className="w-full"
+								value={localSaveConfig.expiryThreshold ?? ""}
+								min={1}
+								placeholder={"Expiry threshold in milliseconds"}
+								onChange={(e) => {
+									const nextValue = Number(e.target.value);
+									setLocalSaveConfig((curr) => {
+										curr.expiryThreshold = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 1;
+										return structuredClone(curr);
+									});
+								}}
+							/>
+						</label>
+						<label>
+							Blocked timeout threshold (ms)
+							<span className="block text-sm text-muted-foreground">~ {blockedTimeoutReadable}</span>
+							<Input
+								type="number"
+								className="w-full"
+								value={localSaveConfig.blockedTimeoutThreshold ?? ""}
+								min={1}
+								placeholder={"Blocked timeout threshold in milliseconds"}
+								onChange={(e) => {
+									const nextValue = Number(e.target.value);
+									setLocalSaveConfig((curr) => {
+										curr.blockedTimeoutThreshold = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 10000;
+										return structuredClone(curr);
+									});
+								}}
+							/>
+						</label>
+					</div>
+
+					<div className="grid md:grid-cols-2 grid-cols-1 gap-4">
+						<label>
+							Encryption key
+							<span
+								className={cx(
+									"block text-sm text-muted-foreground",
+									hasEncryptionKeyInput ? (hasValidEncryptionKeyInputLength ? "text-green-500" : "text-red-800") : "",
+								)}
+							>
+								{encryptionKeyInputLength} characters
+							</span>
+							<div className="grid md:grid-cols-2 grid-cols-1 gap-4">
+								<Input
+									type="text"
+									value={encryptionKeyInputValue}
+									placeholder={"Encryption key"}
+									debounceThresholdMs={700}
+									onChange={(e) => {
+										const newValue = e.target.value;
+										setEncryptionKeyInputValue(newValue);
+										if ([16, 24, 32].includes(newValue.length)) {
+											setLocalSaveConfig((curr) => {
+												curr.encryptionKey = newValue;
+												return structuredClone(curr);
+											});
+										} else {
+											setLocalSaveConfig((curr) => {
+												curr.encryptionKey = undefined;
+												return structuredClone(curr);
+											});
+										}
+									}}
+									onDebouncedChange={(e) => {
+										const newValue = e.target.value;
+										if (![16, 24, 32].includes(newValue.length)) {
+											toast.error("Encryption key must be either 16, 24, or 32 characters long");
+										}
+									}}
+								/>
+								<div className="gap-2 flex flex-col md:flex-row ">
+									<Button
+										onClick={() => {
+											const newValue = Array.from({ length: 32 }, () => Math.floor(Math.random() * 36).toString(36))
+												.join("")
+												.toUpperCase();
+											setEncryptionKeyInputValue(newValue);
+											setLocalSaveConfig((curr) => {
+												curr.encryptionKey = newValue;
+												return structuredClone(curr);
+											});
+										}}
+									>
+										Generate Random
+									</Button>
+									{hasEncryptionKeyInput && (
+										<Button
+											onClick={() => {
+												setEncryptionKeyInputValue("");
+												setLocalSaveConfig((curr) => {
+													curr.encryptionKey = undefined;
+													return structuredClone(curr);
+												});
+											}}
+											variant={"destructive"}
+										>
+											Clear
+										</Button>
+									)}
+									{hasEncryptionKeyInput && hasValidEncryptionKeyInputLength && (
+										<Button
+											onClick={async () => {
+												toast.promise(navigator.clipboard.writeText(localSaveConfig.encryptionKey ?? ""), {
+													loading: `Copying encryption key`,
+													success: `Copied encryption key`,
+													error: `Failed to copy encryption key`,
+												});
+											}}
+											variant={"secondary"}
+										>
+											Copy
+										</Button>
+									)}
+								</div>
+							</div>
 						</label>
 						<label>
 							Category
@@ -60,130 +208,36 @@ export default function Demo() {
 								}}
 							/>
 						</label>
-						<label>
-							Item key
-							<Input
-								type="text"
-								value={itemKey ?? ""}
-								placeholder={"Item key"}
+						<label className="inline-flex flex-row items-center justify-start w-fit">
+							Print logs
+							<Switch
+								checked={localSaveConfig.printLogs}
 								onChange={(e) => {
-									setItemKey(e.target.value);
+									setLocalSaveConfig((curr) => {
+										curr.printLogs = e;
+										return structuredClone(curr);
+									});
 								}}
 							/>
 						</label>
-						<label>
-							Expiry threshold
-							<Input
-								type="number"
-								value={localSaveConfig.expiryThreshold ?? ""}
-								min={0}
-								placeholder={"Item key"}
+						<label className="inline-flex flex-row items-center justify-start w-fit">
+							Clear storage on decrypt error
+							<Switch
+								checked={localSaveConfig.clearOnDecryptError}
 								onChange={(e) => {
 									setLocalSaveConfig((curr) => {
-										curr.expiryThreshold = +e.target.value;
+										curr.clearOnDecryptError = e;
 										return structuredClone(curr);
 									});
 								}}
 							/>
 						</label>
 					</div>
-					<label
-						className={cx(
-							localSaveConfig.encryptionKey?.length > 0
-								? [16, 24, 32].includes(localSaveConfig.encryptionKey?.length)
-									? "text-green-500"
-									: "text-red-800"
-								: "",
-						)}
-					>
-						{`Encryption key (${localSaveConfig.encryptionKey?.length ?? 0} length)`}
-
-						<div className="grid md:grid-cols-2 grid-cols-1 gap-4">
-							<Input
-								type="text"
-								className={cx(
-									localSaveConfig.encryptionKey?.length > 0
-										? [16, 24, 32].includes(localSaveConfig.encryptionKey?.length)
-											? "border-green-500"
-											: "border-red-800"
-										: "",
-								)}
-								value={localSaveConfig?.encryptionKey ?? ""}
-								placeholder={"Encryption key"}
-								onChange={(e) => {
-									setLocalSaveConfig((curr) => {
-										curr.encryptionKey = e.target.value;
-										return structuredClone(curr);
-									});
-								}}
-							/>
-							<div className="gap-2 flex flex-col md:flex-row ">
-								<Button
-									onClick={() => {
-										setLocalSaveConfig((curr) => {
-											curr.encryptionKey = Array.from({ length: 32 }, () => Math.floor(Math.random() * 36).toString(36))
-												.join("")
-												.toUpperCase();
-											return structuredClone(curr);
-										});
-									}}
-								>
-									Generate Random
-								</Button>
-								{localSaveConfig.encryptionKey?.length > 0 && (
-									<>
-										<Button
-											onClick={() => {
-												setLocalSaveConfig((curr) => {
-													curr.encryptionKey = "";
-													return structuredClone(curr);
-												});
-											}}
-											variant={"destructive"}
-										>
-											Clear
-										</Button>
-										<Button
-											onClick={async () => {
-												await navigator.clipboard.writeText(localSaveConfig.encryptionKey);
-											}}
-											variant={"secondary"}
-										>
-											Copy
-										</Button>
-									</>
-								)}
-							</div>
-						</div>
-					</label>
-					<label className="inline-flex flex-row items-center justify-start w-fit">
-						Print logs
-						<Switch
-							checked={localSaveConfig.printLogs}
-							onChange={(e) => {
-								setLocalSaveConfig((curr) => {
-									curr.printLogs = e;
-									return structuredClone(curr);
-								});
-							}}
-						/>
-					</label>
-					<label className="inline-flex flex-row items-center justify-start w-fit">
-						Clear storage on decrypt error
-						<Switch
-							checked={localSaveConfig.clearOnDecryptError}
-							onChange={(e) => {
-								setLocalSaveConfig((curr) => {
-									curr.clearOnDecryptError = e;
-									return structuredClone(curr);
-								});
-							}}
-						/>
-					</label>
 				</div>
 			</div>
 			<div className="flex flex-col p-6 border border-border rounded grow">
 				<h3>Testing & Data Management</h3>
+				<span className="block text-sm text-muted-foreground">{`Using item key '${itemKey}' in category '${category}' (${localSaveConfig.encryptionKey ? `encryption key: ${localSaveConfig.encryptionKey.length} chars` : "no encryption key"})`}</span>
 				<div className="mt-6 flex-col flex gap-4">
 					<TextArea
 						className="w-full text-base"
@@ -247,12 +301,26 @@ export default function Demo() {
 								toast.promise(localSave.get(category, itemKey), {
 									loading: `Fetching data under '${itemKey}' from ${category}`,
 									success: (data) => {
-										setUserData(data?.data as string);
-										return `Data recovered from '${new Date(data?.timestamp ?? "").toUTCString()}`;
+										if (!data) {
+											setUserData("");
+											return `No data found with key '${itemKey}' in '${category}'`;
+										}
+
+										if (typeof data.data === "string") {
+											setUserData(data.data);
+										} else {
+											setUserData(JSON.stringify(data.data, null, 2));
+										}
+
+										return `Data recovered from '${new Date(data.timestamp).toUTCString()}'`;
 									},
-									error: () => {
+									error: (error) => {
+										console.log({ error });
+										if (error.message === "Data decryption failed") {
+											return `Decryption failed for data under '${itemKey}' in '${category}' due to an incorrect/missing encryption key."}`;
+										}
 										setUserData("");
-										return "No data found with that key in current LocalSave category";
+										return `Failed to fetch data under '${itemKey}' from '${category}'`;
 									},
 								});
 							}}
@@ -298,14 +366,14 @@ export default function Demo() {
 						<Button
 							onClick={() => {
 								toast.promise(localSave.expire(localSaveConfig.expiryThreshold), {
-									loading: `Expiring data older than ${localSaveConfig.expiryThreshold} days`,
-									success: `Expired data older than ${localSaveConfig.expiryThreshold} days`,
-									error: `Failed to expire data older than ${localSaveConfig.expiryThreshold} days`,
+									loading: `Expiring data older than ${expiryThresholdReadable} (${localSaveConfig.expiryThreshold} ms)`,
+									success: `Expired data older than ${expiryThresholdReadable} (${localSaveConfig.expiryThreshold} ms)`,
+									error: `Failed to expire data older than ${expiryThresholdReadable} (${localSaveConfig.expiryThreshold} ms)`,
 								});
 							}}
 							variant={"destructive"}
 						>
-							{`Expire data older than ${localSaveConfig.expiryThreshold} days`}
+							{`Expire data older than ${expiryThresholdReadable}`}
 						</Button>
 					</div>
 				</div>
