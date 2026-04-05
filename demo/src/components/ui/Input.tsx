@@ -16,7 +16,6 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 			if (isControlled) setInternalValue(value as string);
 		}, [value, isControlled]);
 
-		// Immediate change handler
 		const handleChange = useCallback(
 			(e: React.ChangeEvent<HTMLInputElement>) => {
 				const newValue = e.target.value;

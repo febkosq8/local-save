@@ -119,13 +119,6 @@ export default function Demo() {
 							<div className="grid md:grid-cols-2 grid-cols-1 gap-4">
 								<Input
 									type="text"
-									className={cx(
-										hasEncryptionKeyInput
-											? hasValidEncryptionKeyInputLength
-												? "border-green-500"
-												: "border-red-800"
-											: "",
-									)}
 									value={encryptionKeyInputValue}
 									placeholder={"Encryption key"}
 									debounceThresholdMs={500}
@@ -239,6 +232,7 @@ export default function Demo() {
 			</div>
 			<div className="flex flex-col p-6 border border-border rounded grow">
 				<h3>Testing & Data Management</h3>
+				<span className="block text-sm text-muted-foreground">{`Using item key '${itemKey}' in category '${category}' (${localSaveConfig.encryptionKey ? `encryption key: ${localSaveConfig.encryptionKey.length} chars` : "no encryption key"})`}</span>
 				<div className="mt-6 flex-col flex gap-4">
 					<TextArea
 						className="w-full text-base"
