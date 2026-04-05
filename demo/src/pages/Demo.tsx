@@ -121,7 +121,7 @@ export default function Demo() {
 									type="text"
 									value={encryptionKeyInputValue}
 									placeholder={"Encryption key"}
-									debounceThresholdMs={500}
+									debounceThresholdMs={700}
 									onChange={(e) => {
 										const newValue = e.target.value;
 										setEncryptionKeyInputValue(newValue);
