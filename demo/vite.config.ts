@@ -1,6 +1,7 @@
 import { reactRouter } from "@react-router/dev/vite";
 import { defineConfig } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
+import tailwindcss from "@tailwindcss/vite";
+import path from "path";
 
 export default defineConfig({
 	server: {
@@ -13,8 +14,13 @@ export default defineConfig({
 			},
 		},
 	},
+	resolve: {
+		alias: {
+			"@feb": path.resolve(__dirname, "src"),
+		},
+	},
 	build: {
 		outDir: "build",
 	},
-	plugins: [reactRouter(), tsconfigPaths()],
+	plugins: [reactRouter(), tailwindcss()],
 });
