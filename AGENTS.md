@@ -1,6 +1,6 @@
-# Copilot Instructions for local-save
+# AGENTS.md: AI Coding Agent Instructions for local-save
 
-## Project Context
+# Project Context
 
 - This repository is a TypeScript library (`@febkosq8/local-save`) focused on secure IndexedDB storage with optional AES-GCM encryption.
 - Preserve the public API and behavior unless a change request explicitly requires a breaking update.
